@@ -21,6 +21,13 @@ pub enum ChannelState {
     Syncing,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum HtlcDirection {
+    In,
+    Out,
+}
+
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -100,16 +107,61 @@ pub struct LocalCommit {
     pub index: u32,
     pub spec: CommitSpec,
     pub commit_tx_and_remote_sig: CommitTxAndSign,
-    pub htlc_txs_and_remote_sigs: Vec<String>,
+    pub htlc_txs_and_remote_sigs: Vec<HtlcTxsAndRemoteSigs>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct HtlcTxsAndRemoteSigs {
+    pub htlc_tx: HtlcTx,
+    pub remote_sig: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HtlcTx {
+    pub txid: String,
+    pub tx: String,
+    pub payment_hash: Option<String>,
+    pub htlc_id: u32,
+}
+
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CommitSpec {
-    pub htlcs: Vec<String>,
+    pub htlcs: Vec<HtlcInfo>,
     pub commit_tx_feerate: u64,
     pub to_local: u64,
     pub to_remote: u64,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HtlcInfo {
+    pub direction: HtlcDirection,
+    pub add: HtlcAdd,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HtlcAdd {
+    pub channel_id: String,
+    pub id: u32,
+    pub amount_msat: u64,
+    pub payment_hash: String,
+    pub cltv_expiry: u64,
+    pub onion_routing_packet: Option<OnionRoutingPacket>,
+    pub tlv_stream: TlvStream,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct OnionRoutingPacket {
+    pub version: u32,
+    pub public_key: String,
+    pub payload: String,
+    pub hmac: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -138,9 +190,32 @@ pub struct RemoteCommit {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ChannelChanges {
-    pub proposed: Vec<String>,
-    pub signed: Vec<String>,
-    pub acked: Vec<String>,
+    pub proposed: Vec<ProposedChange>,
+    pub signed: Vec<SignedChange>,
+    pub acked: Vec<AckedChange>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProposedChange {
+    pub channel_id: String,
+    pub id: u32,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SignedChange {
+    pub channel_id: String,
+    pub id: u32,
+    pub reason: String,
+    pub tlv_stream: TlvStream,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AckedChange {
+    pub channel_id: String,
+    pub id: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -171,8 +246,8 @@ pub struct ChannelAnnouncement {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TlvStream {
-    pub records: Vec<String>,
-    pub unknown: Vec<String>,
+    // pub records: Vec<String>,
+    // pub unknown: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]

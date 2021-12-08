@@ -1,41 +1,44 @@
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEvent, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{error::Error, io, thread, time::Duration, sync::mpsc};
+use std::{error::Error, io, sync::mpsc, thread, time::Duration};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Clear, Paragraph, Tabs},
+    widgets::{Block, Borders, Clear, Paragraph, Sparkline, Tabs},
     Frame, Terminal,
 };
 
-use super::app::{AppMutex, App};
+use super::app::{App, AppMutex};
 
 pub fn run_ui(app: AppMutex) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    // Run the app
-    let res = run_app(&mut terminal, app);
+    execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
 
     // restore terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
+    defer! {
+        let backend = CrosstermBackend::new(io::stdout());
+        let mut terminal = Terminal::new(backend).unwrap();
+        disable_raw_mode().unwrap();
+        execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        ).unwrap();
+        terminal.show_cursor().unwrap();
+    }
 
-    Ok(res?)
+    // Run the app
+    let backend = CrosstermBackend::new(io::stdout());
+    let mut terminal = Terminal::new(backend)?;
+    run_app(&mut terminal, app)?;
+
+    Ok(())
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mapp: AppMutex) -> io::Result<()> {
@@ -67,7 +70,7 @@ enum AppEvent {
 fn events(tick_rate: Duration) -> mpsc::Receiver<AppEvent> {
     let (tx, rx) = mpsc::channel();
     let keys_tx = tx.clone();
-    thread::spawn(move || {
+    thread::spawn(move || loop {
         if let Ok(Event::Key(key)) = event::read() {
             if let Err(err) = keys_tx.send(AppEvent::Input(key)) {
                 eprintln!("{}", err);
@@ -87,7 +90,8 @@ fn events(tick_rate: Duration) -> mpsc::Receiver<AppEvent> {
 
 fn ui<B: Backend>(f: &mut Frame<B>, mapp: AppMutex) {
     let size = f.size();
-    let app = mapp.lock().unwrap();
+    let mut app = mapp.lock().unwrap();
+    app.resize(size.width);
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
@@ -127,7 +131,9 @@ fn ui<B: Backend>(f: &mut Frame<B>, mapp: AppMutex) {
 
     if !app.errors.is_empty() {
         let errors: Vec<Spans> = app.errors.iter().map(|e| Spans::from(e.clone())).collect();
-        let block = Block::default().title("Errors occured").borders(Borders::ALL);
+        let block = Block::default()
+            .title("Errors occured")
+            .borders(Borders::ALL);
         let paragraph = Paragraph::new(errors)
             .block(block)
             .alignment(Alignment::Left);
@@ -141,7 +147,15 @@ fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let vchunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Percentage(25), Constraint::Percentage(75)].as_ref())
+        .constraints(
+            [
+                Constraint::Percentage(25),
+                Constraint::Percentage(35),
+                Constraint::Percentage(20),
+                Constraint::Percentage(20),
+            ]
+            .as_ref(),
+        )
         .split(area);
 
     let toprow = Layout::default()
@@ -151,6 +165,8 @@ fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .split(vchunks[0]);
 
     draw_info(f, app, toprow[0]);
+    draw_relays_amounts(f, app, vchunks[2]);
+    draw_relays_volumes(f, app, vchunks[3]);
 }
 
 fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
@@ -193,6 +209,30 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .block(block)
         .alignment(Alignment::Left);
     f.render_widget(paragraph, area);
+}
+
+fn draw_relays_amounts<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
+    let sparkline = Sparkline::default()
+        .block(
+            Block::default()
+                .title("24h relay count")
+                .borders(Borders::LEFT | Borders::RIGHT),
+        )
+        .data(&app.relays_amounts_line)
+        .style(Style::default().fg(Color::Red));
+    f.render_widget(sparkline, area);
+}
+
+fn draw_relays_volumes<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
+    let sparkline = Sparkline::default()
+        .block(
+            Block::default()
+                .title("24h relay volumes")
+                .borders(Borders::LEFT | Borders::RIGHT),
+        )
+        .data(&app.relays_volumes_line)
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(sparkline, area);
 }
 
 fn draw_peers<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {

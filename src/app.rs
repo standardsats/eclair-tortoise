@@ -1,9 +1,11 @@
+use chrono::NaiveDateTime;
 use crossterm::event::KeyCode;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::client::{
+    audit::AuditInfo,
     channel::{ChannelInfo, ChannelState},
     node::NodeInfo,
     Client,
@@ -25,7 +27,12 @@ pub struct App {
     pub pending_chans: usize,
     pub sleeping_chans: usize,
 
+    pub screen_width: u16,
+    pub relays_amounts_line: Vec<u64>,
+    pub relays_volumes_line: Vec<u64>,
+
     pub channels: Vec<ChannelInfo>,
+    pub audit: AuditInfo,
 }
 
 impl App {
@@ -47,7 +54,11 @@ impl App {
             active_chans: 0,
             pending_chans: 0,
             sleeping_chans: 0,
+            screen_width: 80,
+            relays_amounts_line: vec![],
+            relays_volumes_line: vec![],
             channels: vec![],
+            audit: AuditInfo::default(),
         })
     }
 
@@ -98,6 +109,63 @@ impl App {
             .count()
     }
 
+    const LINE_PERIOD: u64 = 24 * 3600;
+    const LINE_MARGINS: u64 = 2;
+
+    pub fn get_relays_amounts_line(&mut self) -> Vec<u64> {
+        let now = chrono::offset::Utc::now().timestamp();
+        let mut relays: Vec<u64> = self
+            .audit
+            .relayed
+            .iter()
+            .filter(|s| s.timestamp/1000 > (now - App::LINE_PERIOD as i64) as u64)
+            .map(|s| s.timestamp)
+            .collect();
+        relays.sort_by(|a, b| a.partial_cmp(&b).unwrap());
+
+        let line_width = self.screen_width as u64 - App::LINE_MARGINS;
+        let mut result = vec![0; line_width as usize + 1];
+        if !relays.is_empty() {
+            let t0 = relays[0];
+            let t1 = relays[relays.len()-1];
+            for t in relays.iter() {
+                let i = (((t - t0) as f64)/((t1 - t0) as f64) * (line_width as f64)) as usize;
+                result[i] += 1;
+            }
+
+            let max_relay = *result.iter().max().unwrap_or(&1) as f64;
+            result = result.iter().map(|a| (100.0 * (*a as f64)/max_relay) as u64).collect();
+        }
+        result
+    }
+
+    pub fn get_relays_volumes_line(&mut self) -> Vec<u64> {
+        let now = chrono::offset::Utc::now().timestamp();
+        let mut relays: Vec<(u64, u64)> = self
+            .audit
+            .relayed
+            .iter()
+            .filter(|s| s.timestamp/1000 > (now - App::LINE_PERIOD as i64) as u64)
+            .map(|s| (s.amount_in, s.timestamp))
+            .collect();
+        relays.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+        let line_width = self.screen_width as u64 - App::LINE_MARGINS;
+        let mut result = vec![0; line_width as usize + 1];
+        if !relays.is_empty() {
+            let t0 = relays[0].1;
+            let t1 = relays[relays.len()-1].1;
+            for (amount, t) in relays.iter() {
+                let i = (((t - t0) as f64)/((t1 - t0) as f64) * (line_width as f64)) as usize;
+                result[i] += amount;
+            }
+
+            let max_relay = *result.iter().max().unwrap_or(&1) as f64;
+            result = result.iter().map(|a| (100.0 * (*a as f64)/max_relay) as u64).collect();
+        }
+        result
+    }
+
     pub async fn start_workers(mapp: AppMutex) {
         tokio::spawn({
             let mapp = mapp.clone();
@@ -107,6 +175,7 @@ impl App {
                     match res {
                         Err(e) => {
                             let estr = format!("App worker failed with: {}", e);
+                            // println!("{}", estr);
                             let mut app = mapp.lock().unwrap();
                             app.errors.push(estr);
                         }
@@ -121,17 +190,30 @@ impl App {
             }
         });
     }
+
+    pub fn resize(&mut self, new_width: u16) {
+        if self.screen_width != new_width {
+            self.screen_width = new_width;
+            self.relays_amounts_line = self.get_relays_amounts_line();
+            self.relays_volumes_line = self.get_relays_volumes_line();
+        }
+    }
 }
 
 pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error> {
     let client = mapp.lock().unwrap().client.clone();
     let chan_info = client.get_channels().await?;
+    let audit_info = client.get_audit().await?;
     {
         let mut app = mapp.lock().unwrap();
         app.channels = chan_info;
         app.active_chans = app.get_active_chans();
         app.pending_chans = app.get_pending_chans();
         app.sleeping_chans = app.get_sleeping_chans();
+
+        app.audit = audit_info;
+        app.relays_amounts_line = app.get_relays_amounts_line();
+        app.relays_volumes_line = app.get_relays_volumes_line();
     }
     Ok(())
 }

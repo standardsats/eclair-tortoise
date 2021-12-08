@@ -3,6 +3,8 @@ mod client;
 mod opts;
 mod ui;
 
+#[macro_use(defer)] extern crate scopeguard;
+
 use clap::Parser;
 use std::error::Error;
 use std::sync::{Arc, Mutex};

@@ -1,8 +1,9 @@
+pub mod audit;
 pub mod channel;
 pub mod node;
 
 use thiserror::Error;
-use self::{node::NodeInfo, channel::ChannelInfo};
+use self::{node::NodeInfo, channel::ChannelInfo, audit::AuditInfo};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -44,6 +45,20 @@ impl Client {
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "channels"))
+                .basic_auth("", Some(self.password.clone()))
+        };
+        // println!("{:?}", builder().send().await?.text().await?);
+        use std::io::prelude::*;
+        let mut file = std::fs::File::create("log.txt").unwrap();
+        let str = format!("{:?}", builder().send().await?.text().await?);
+        file.write_all(str.as_bytes()).unwrap();
+        Ok(builder().send().await?.error_for_status()?.json().await?)
+    }
+
+    pub async fn get_audit(&self) -> Result<AuditInfo> {
+        let builder = || {
+            self.client
+                .post(format!("{}/{}", self.url, "audit"))
                 .basic_auth("", Some(self.password.clone()))
         };
         // println!("{:?}", builder().send().await?.text().await?);
