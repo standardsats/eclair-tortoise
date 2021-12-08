@@ -4,6 +4,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::{error::Error, io, sync::mpsc, thread, time::Duration};
+use num_format::{Locale, ToFormattedString};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -182,6 +183,8 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::from(" Network:        "),
             Span::from(format!("{:?}", app.node_info.network)),
         ]),
+        Spans::from(""),
+
         Spans::from(vec![
             Span::from(" Active chans:   "),
             Span::styled(
@@ -203,6 +206,30 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
                 Style::default().fg(Color::Gray),
             ),
         ]),
+        Spans::from(""),
+
+        Spans::from(vec![
+            Span::from(" Active sats:   "),
+            Span::styled(
+                format!("{:>20}", app.active_sats.to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::from(" Pending sats:  "),
+            Span::styled(
+                format!("{:>20}", app.pending_sats.to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Yellow),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::from(" Sleeping sats: "),
+            Span::styled(
+                format!("{:>20}", app.sleeping_sats.to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Gray),
+            ),
+        ]),
+        Spans::from(""),
     ];
     let block = Block::default().title("Stats").borders(Borders::ALL);
     let paragraph = Paragraph::new(node_info)

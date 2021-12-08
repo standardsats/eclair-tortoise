@@ -27,6 +27,10 @@ pub struct App {
     pub pending_chans: usize,
     pub sleeping_chans: usize,
 
+    pub active_sats: u64,
+    pub pending_sats: u64,
+    pub sleeping_sats: u64,
+
     pub screen_width: u16,
     pub relays_amounts_line: Vec<u64>,
     pub relays_volumes_line: Vec<u64>,
@@ -54,6 +58,9 @@ impl App {
             active_chans: 0,
             pending_chans: 0,
             sleeping_chans: 0,
+            active_sats: 0,
+            pending_sats: 0,
+            sleeping_sats: 0,
             screen_width: 80,
             relays_amounts_line: vec![],
             relays_volumes_line: vec![],
@@ -107,6 +114,34 @@ impl App {
             .iter()
             .filter(|c| c.state == ChannelState::Offline)
             .count()
+    }
+
+    pub fn get_active_sats(&self) -> u64 {
+        self.channels
+            .iter()
+            .filter(|c| c.state == ChannelState::Normal)
+            .map(|c| c.data.commitments.local_commit.spec.to_local)
+            .sum()
+    }
+
+    pub fn get_pending_sats(&self) -> u64 {
+        self.channels
+            .iter()
+            .filter(|c| {
+                c.state == ChannelState::Closing
+                    || c.state == ChannelState::Opening
+                    || c.state == ChannelState::Syncing
+            })
+            .map(|c| c.data.commitments.local_commit.spec.to_local)
+            .sum()
+    }
+
+    pub fn get_sleeping_sats(&self) -> u64 {
+        self.channels
+            .iter()
+            .filter(|c| c.state == ChannelState::Offline)
+            .map(|c| c.data.commitments.local_commit.spec.to_local)
+            .sum()
     }
 
     const LINE_PERIOD: u64 = 24 * 3600;
@@ -210,6 +245,9 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
         app.active_chans = app.get_active_chans();
         app.pending_chans = app.get_pending_chans();
         app.sleeping_chans = app.get_sleeping_chans();
+        app.active_sats = app.get_active_sats();
+        app.pending_sats = app.get_pending_sats();
+        app.sleeping_sats = app.get_sleeping_sats();
 
         app.audit = audit_info;
         app.relays_amounts_line = app.get_relays_amounts_line();
