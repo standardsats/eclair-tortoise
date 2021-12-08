@@ -150,8 +150,7 @@ fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .margin(1)
         .constraints(
             [
-                Constraint::Percentage(25),
-                Constraint::Percentage(35),
+                Constraint::Percentage(60),
                 Constraint::Percentage(20),
                 Constraint::Percentage(20),
             ]
@@ -162,25 +161,25 @@ fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let toprow = Layout::default()
         .direction(Direction::Horizontal)
         .margin(1)
-        .constraints([Constraint::Percentage(15), Constraint::Percentage(85)].as_ref())
+        .constraints([Constraint::Percentage(20), Constraint::Percentage(80)].as_ref())
         .split(vchunks[0]);
 
     draw_info(f, app, toprow[0]);
-    draw_relays_amounts(f, app, vchunks[2]);
-    draw_relays_volumes(f, app, vchunks[3]);
+    draw_relays_amounts(f, app, vchunks[1]);
+    draw_relays_volumes(f, app, vchunks[2]);
 }
 
 fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let node_info = vec![
         Spans::from(vec![
-            Span::from(" Node:           "),
+            Span::from(" Node:    "),
             Span::styled(
                 app.node_info.alias.clone(),
                 Style::default().fg(Color::Green),
             ),
         ]),
         Spans::from(vec![
-            Span::from(" Network:        "),
+            Span::from(" Network: "),
             Span::from(format!("{:?}", app.node_info.network)),
         ]),
         Spans::from(""),
@@ -211,25 +210,40 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         Spans::from(vec![
             Span::from(" Active sats:   "),
             Span::styled(
-                format!("{:>20}", app.active_sats.to_formatted_string(&Locale::en)),
+                format!("{:>23}", app.active_sats.to_formatted_string(&Locale::en)),
                 Style::default().fg(Color::Green),
             ),
         ]),
         Spans::from(vec![
             Span::from(" Pending sats:  "),
             Span::styled(
-                format!("{:>20}", app.pending_sats.to_formatted_string(&Locale::en)),
+                format!("{:>23}", app.pending_sats.to_formatted_string(&Locale::en)),
                 Style::default().fg(Color::Yellow),
             ),
         ]),
         Spans::from(vec![
             Span::from(" Sleeping sats: "),
             Span::styled(
-                format!("{:>20}", app.sleeping_sats.to_formatted_string(&Locale::en)),
+                format!("{:>23}", app.sleeping_sats.to_formatted_string(&Locale::en)),
                 Style::default().fg(Color::Gray),
             ),
         ]),
         Spans::from(""),
+
+        Spans::from(vec![
+            Span::from(" Relayed per mounth: "),
+            Span::styled(
+                format!("{:>18}", app.relayed_mounth.to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::from(" Relayed percent:    "),
+            Span::styled(
+                format!("{:>18.2}", app.relayed_percent()),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
     ];
     let block = Block::default().title("Stats").borders(Borders::ALL);
     let paragraph = Paragraph::new(node_info)

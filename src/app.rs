@@ -31,6 +31,8 @@ pub struct App {
     pub pending_sats: u64,
     pub sleeping_sats: u64,
 
+    pub relayed_mounth: u64,
+
     pub screen_width: u16,
     pub relays_amounts_line: Vec<u64>,
     pub relays_volumes_line: Vec<u64>,
@@ -61,6 +63,7 @@ impl App {
             active_sats: 0,
             pending_sats: 0,
             sleeping_sats: 0,
+            relayed_mounth: 0,
             screen_width: 80,
             relays_amounts_line: vec![],
             relays_volumes_line: vec![],
@@ -144,6 +147,24 @@ impl App {
             .sum()
     }
 
+    pub fn get_relayed_mounth(&self) -> u64 {
+        let now = chrono::offset::Utc::now().timestamp();
+        self.audit
+            .relayed
+            .iter()
+            .filter(|s| s.timestamp / 1000 > (now - 30 * 24 * 3600) as u64)
+            .map(|s| s.amount_in)
+            .sum()
+    }
+
+    pub fn local_volume(&self) -> u64 {
+        self.active_sats + self.pending_sats + self.sleeping_sats
+    }
+
+    pub fn relayed_percent(&self) -> f64 {
+        100.0 * (self.relayed_mounth as f64) / (self.local_volume() as f64)
+    }
+
     const LINE_PERIOD: u64 = 24 * 3600;
     const LINE_MARGINS: u64 = 2;
 
@@ -153,7 +174,7 @@ impl App {
             .audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp/1000 > (now - App::LINE_PERIOD as i64) as u64)
+            .filter(|s| s.timestamp / 1000 > (now - App::LINE_PERIOD as i64) as u64)
             .map(|s| s.timestamp)
             .collect();
         relays.sort_by(|a, b| a.partial_cmp(&b).unwrap());
@@ -162,14 +183,17 @@ impl App {
         let mut result = vec![0; line_width as usize + 1];
         if !relays.is_empty() {
             let t0 = relays[0];
-            let t1 = relays[relays.len()-1];
+            let t1 = relays[relays.len() - 1];
             for t in relays.iter() {
-                let i = (((t - t0) as f64)/((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i = (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += 1;
             }
 
             let max_relay = *result.iter().max().unwrap_or(&1) as f64;
-            result = result.iter().map(|a| (100.0 * (*a as f64)/max_relay) as u64).collect();
+            result = result
+                .iter()
+                .map(|a| (100.0 * (*a as f64) / max_relay) as u64)
+                .collect();
         }
         result
     }
@@ -180,7 +204,7 @@ impl App {
             .audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp/1000 > (now - App::LINE_PERIOD as i64) as u64)
+            .filter(|s| s.timestamp / 1000 > (now - App::LINE_PERIOD as i64) as u64)
             .map(|s| (s.amount_in, s.timestamp))
             .collect();
         relays.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
@@ -189,14 +213,17 @@ impl App {
         let mut result = vec![0; line_width as usize + 1];
         if !relays.is_empty() {
             let t0 = relays[0].1;
-            let t1 = relays[relays.len()-1].1;
+            let t1 = relays[relays.len() - 1].1;
             for (amount, t) in relays.iter() {
-                let i = (((t - t0) as f64)/((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i = (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += amount;
             }
 
             let max_relay = *result.iter().max().unwrap_or(&1) as f64;
-            result = result.iter().map(|a| (100.0 * (*a as f64)/max_relay) as u64).collect();
+            result = result
+                .iter()
+                .map(|a| (100.0 * (*a as f64) / max_relay) as u64)
+                .collect();
         }
         result
     }
@@ -252,6 +279,8 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
         app.audit = audit_info;
         app.relays_amounts_line = app.get_relays_amounts_line();
         app.relays_volumes_line = app.get_relays_volumes_line();
+
+        app.relayed_mounth = app.get_relayed_mounth();
     }
     Ok(())
 }
