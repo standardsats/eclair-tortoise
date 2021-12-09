@@ -262,7 +262,30 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         Spans::from(vec![
             Span::from(" Relayed percent:    "),
             Span::styled(
-                format!("{:>18.2}", app.relayed_percent()),
+                format!("{:>18.2}%", app.relayed_percent()),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Spans::from(""),
+
+        Spans::from(vec![
+            Span::from(" Fee per day:    "),
+            Span::styled(
+                format!("{:>22} sats", (app.fee_day / 1000).to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::from(" Fee per mounth: "),
+            Span::styled(
+                format!("{:>22} sats", (app.fee_mounth / 1000).to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::from(" ARP year:    "),
+            Span::styled(
+                format!("{:>25.2}%", app.return_rate),
                 Style::default().fg(Color::Green),
             ),
         ]),

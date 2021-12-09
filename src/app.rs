@@ -35,6 +35,10 @@ pub struct App {
     pub relayed_mounth: u64,
     pub relayed_day: u64,
 
+    pub fee_mounth: u64,
+    pub fee_day: u64,
+    pub return_rate: f64, // ARP per year
+
     pub screen_width: u16,
     pub relays_maximum_volume: u64,
     pub relays_maximum_count: u64,
@@ -71,6 +75,9 @@ impl App {
             relayed_count_day: 0,
             relayed_mounth: 0,
             relayed_day: 0,
+            fee_mounth: 0,
+            fee_day: 0,
+            return_rate: 0.0,
             screen_width: 80,
             relays_maximum_volume: 0,
             relays_maximum_count: 0,
@@ -192,6 +199,27 @@ impl App {
         self.get_relayed_count(24 * 3600)
     }
 
+    fn get_fee(&self, interval: i64) -> u64 {
+        let now = chrono::offset::Utc::now().timestamp();
+        self.audit
+            .relayed
+            .iter()
+            .filter(|s| s.timestamp / 1000 > (now - interval) as u64)
+            .map(|s| s.amount_in - s.amount_out)
+            .sum()
+    }
+
+    pub fn get_fee_mounth(&self) -> u64 {
+        self.get_fee(30 * 24 * 3600)
+    }
+
+    pub fn get_fee_day(&self) -> u64 {
+        self.get_fee(24 * 3600)
+    }
+
+    pub fn get_return_rate(&self) -> f64 {
+        12.0 * 100.0 * (self.fee_mounth as f64) / (self.local_volume() as f64)
+    }
 
     pub fn local_volume(&self) -> u64 {
         self.active_sats + self.pending_sats + self.sleeping_sats
@@ -331,6 +359,10 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
         app.relayed_day = app.get_relayed_day();
         app.relayed_count_mounth = app.get_relayed_count_mounth();
         app.relayed_count_day = app.get_relayed_count_day();
+
+        app.fee_mounth = app.get_fee_mounth();
+        app.fee_day = app.get_fee_day();
+        app.return_rate = app.get_return_rate();
     }
     Ok(())
 }
