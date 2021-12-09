@@ -236,7 +236,8 @@ impl App {
                     let res = query_node_info(mapp.clone()).await;
                     match res {
                         Err(e) => {
-                            let estr = format!("App worker failed with: {}", e);
+                            let now = chrono::offset::Utc::now().timestamp();
+                            let estr = format!("App worker failed at {} with: {}", now, e);
                             // println!("{}", estr);
                             let mut app = mapp.lock().unwrap();
                             app.errors.push(estr);

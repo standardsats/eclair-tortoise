@@ -17,8 +17,10 @@ pub enum ChannelState {
     Normal,
     Opening,
     Closing,
+    Closed,
     Offline,
     Syncing,
+    WaitForFundingConfirmed,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -56,9 +58,37 @@ pub struct ChannelCommitments {
     pub local_next_htlc_id: u64,
     pub remote_next_htlc_id: u64,
     // pub origin_channels: ?,
-    pub remote_next_commit_info: String,
+    pub remote_next_commit_info: RemoteNextCommit,
     pub commit_input: CommitInput,
     pub remote_per_commitment_secrets: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Serialize, Debug,  PartialEq, Eq, Clone)]
+#[serde(untagged)]
+#[serde(rename_all = "camelCase")]
+pub enum RemoteNextCommit {
+    Simple(String),
+    Elaborate {
+        next_remote_commit: RemoteCommit,
+        sent: SentInfo,
+        sent_after_local_commit_index: u32,
+        re_sign_asap: bool,
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SentInfo {
+    channel_id: String,
+    signature: String,
+    htlc_signatures: Vec<HtlcSignature>,
+    tlv_stream: TlvStream,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HtlcSignature {
+
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -198,24 +228,24 @@ pub struct ChannelChanges {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ProposedChange {
-    pub channel_id: String,
-    pub id: u32,
+    // pub channel_id: String,
+    // pub id: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SignedChange {
     pub channel_id: String,
-    pub id: u32,
-    pub reason: String,
+    pub id: Option<u32>,
+    pub reason: Option<String>,
     pub tlv_stream: TlvStream,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AckedChange {
-    pub channel_id: String,
-    pub id: u32,
+    // pub channel_id: String,
+    // pub id: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
