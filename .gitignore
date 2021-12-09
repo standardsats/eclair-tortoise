@@ -2,3 +2,4 @@
 result
 tortoise.db
 log.txt
+log-*.txt

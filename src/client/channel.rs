@@ -65,30 +65,28 @@ pub struct ChannelCommitments {
 
 #[derive(Deserialize, Serialize, Debug,  PartialEq, Eq, Clone)]
 #[serde(untagged)]
-#[serde(rename_all = "camelCase")]
 pub enum RemoteNextCommit {
     Simple(String),
-    Elaborate {
-        next_remote_commit: RemoteCommit,
-        sent: SentInfo,
-        sent_after_local_commit_index: u32,
-        re_sign_asap: bool,
-    }
+    Elaborate(RemoteNextCommitInfo),
 }
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteNextCommitInfo {
+    next_remote_commit: RemoteCommit,
+    sent: SentInfo,
+    sent_after_local_commit_index: u32,
+    re_sign_asap: bool,
+}
+
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SentInfo {
     channel_id: String,
     signature: String,
-    htlc_signatures: Vec<HtlcSignature>,
+    htlc_signatures: Vec<String>,
     tlv_stream: TlvStream,
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct HtlcSignature {
-
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]

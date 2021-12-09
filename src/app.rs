@@ -1,4 +1,3 @@
-use chrono::NaiveDateTime;
 use crossterm::event::KeyCode;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -31,9 +30,14 @@ pub struct App {
     pub pending_sats: u64,
     pub sleeping_sats: u64,
 
+    pub relayed_count_mounth: u64,
+    pub relayed_count_day: u64,
     pub relayed_mounth: u64,
+    pub relayed_day: u64,
 
     pub screen_width: u16,
+    pub relays_maximum_volume: u64,
+    pub relays_maximum_count: u64,
     pub relays_amounts_line: Vec<u64>,
     pub relays_volumes_line: Vec<u64>,
 
@@ -63,8 +67,13 @@ impl App {
             active_sats: 0,
             pending_sats: 0,
             sleeping_sats: 0,
+            relayed_count_mounth: 0,
+            relayed_count_day: 0,
             relayed_mounth: 0,
+            relayed_day: 0,
             screen_width: 80,
+            relays_maximum_volume: 0,
+            relays_maximum_count: 0,
             relays_amounts_line: vec![],
             relays_volumes_line: vec![],
             channels: vec![],
@@ -147,15 +156,42 @@ impl App {
             .sum()
     }
 
-    pub fn get_relayed_mounth(&self) -> u64 {
+    fn get_relayed(&self, interval: i64) -> u64 {
         let now = chrono::offset::Utc::now().timestamp();
         self.audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp / 1000 > (now - 30 * 24 * 3600) as u64)
+            .filter(|s| s.timestamp / 1000 > (now - interval) as u64)
             .map(|s| s.amount_in)
             .sum()
     }
+
+    pub fn get_relayed_mounth(&self) -> u64 {
+        self.get_relayed(30 * 24 * 3600)
+    }
+
+    pub fn get_relayed_day(&self) -> u64 {
+        self.get_relayed(24 * 3600)
+    }
+
+    fn get_relayed_count(&self, interval: i64) -> u64 {
+        let now = chrono::offset::Utc::now().timestamp();
+        self.audit
+            .relayed
+            .iter()
+            .filter(|s| s.timestamp / 1000 > (now - interval) as u64)
+            .map(|_| 1)
+            .sum()
+    }
+
+    pub fn get_relayed_count_mounth(&self) -> u64 {
+        self.get_relayed_count(30 * 24 * 3600)
+    }
+
+    pub fn get_relayed_count_day(&self) -> u64 {
+        self.get_relayed_count(24 * 3600)
+    }
+
 
     pub fn local_volume(&self) -> u64 {
         self.active_sats + self.pending_sats + self.sleeping_sats
@@ -168,7 +204,7 @@ impl App {
     const LINE_PERIOD: u64 = 24 * 3600;
     const LINE_MARGINS: u64 = 2;
 
-    pub fn get_relays_amounts_line(&mut self) -> Vec<u64> {
+    pub fn get_relays_amounts_line(&mut self) -> (Vec<u64>, u64) {
         let now = chrono::offset::Utc::now().timestamp();
         let mut relays: Vec<u64> = self
             .audit
@@ -181,6 +217,7 @@ impl App {
 
         let line_width = self.screen_width as u64 - App::LINE_MARGINS;
         let mut result = vec![0; line_width as usize + 1];
+        let mut max_relay = 0;
         if !relays.is_empty() {
             let t0 = relays[0];
             let t1 = relays[relays.len() - 1];
@@ -189,16 +226,16 @@ impl App {
                 result[i] += 1;
             }
 
-            let max_relay = *result.iter().max().unwrap_or(&1) as f64;
+            max_relay = *result.iter().max().unwrap_or(&1);
             result = result
                 .iter()
-                .map(|a| (100.0 * (*a as f64) / max_relay) as u64)
+                .map(|a| (100.0 * (*a as f64) / (max_relay as f64)) as u64)
                 .collect();
         }
-        result
+        (result, max_relay)
     }
 
-    pub fn get_relays_volumes_line(&mut self) -> Vec<u64> {
+    pub fn get_relays_volumes_line(&mut self) -> (Vec<u64>, u64) {
         let now = chrono::offset::Utc::now().timestamp();
         let mut relays: Vec<(u64, u64)> = self
             .audit
@@ -211,6 +248,7 @@ impl App {
 
         let line_width = self.screen_width as u64 - App::LINE_MARGINS;
         let mut result = vec![0; line_width as usize + 1];
+        let mut max_relay = 0;
         if !relays.is_empty() {
             let t0 = relays[0].1;
             let t1 = relays[relays.len() - 1].1;
@@ -219,13 +257,13 @@ impl App {
                 result[i] += amount;
             }
 
-            let max_relay = *result.iter().max().unwrap_or(&1) as f64;
+            max_relay = *result.iter().max().unwrap_or(&1);
             result = result
                 .iter()
-                .map(|a| (100.0 * (*a as f64) / max_relay) as u64)
+                .map(|a| (100.0 * (*a as f64) / (max_relay as f64)) as u64)
                 .collect();
         }
-        result
+        (result, max_relay)
     }
 
     pub async fn start_workers(mapp: AppMutex) {
@@ -257,8 +295,12 @@ impl App {
     pub fn resize(&mut self, new_width: u16) {
         if self.screen_width != new_width {
             self.screen_width = new_width;
-            self.relays_amounts_line = self.get_relays_amounts_line();
-            self.relays_volumes_line = self.get_relays_volumes_line();
+            let (amounts, max_amounts) = self.get_relays_amounts_line();
+            self.relays_amounts_line = amounts;
+            self.relays_maximum_count = max_amounts;
+            let (volumes, max_volume) = self.get_relays_volumes_line();
+            self.relays_volumes_line = volumes;
+            self.relays_maximum_volume = max_volume;
         }
     }
 }
@@ -278,10 +320,17 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
         app.sleeping_sats = app.get_sleeping_sats();
 
         app.audit = audit_info;
-        app.relays_amounts_line = app.get_relays_amounts_line();
-        app.relays_volumes_line = app.get_relays_volumes_line();
+        let (amounts, max_amounts) = app.get_relays_amounts_line();
+        app.relays_amounts_line = amounts;
+        app.relays_maximum_count = max_amounts;
+        let (volumes, max_volume) = app.get_relays_volumes_line();
+        app.relays_volumes_line = volumes;
+        app.relays_maximum_volume = max_volume;
 
         app.relayed_mounth = app.get_relayed_mounth();
+        app.relayed_day = app.get_relayed_day();
+        app.relayed_count_mounth = app.get_relayed_count_mounth();
+        app.relayed_count_day = app.get_relayed_count_day();
     }
     Ok(())
 }

@@ -208,32 +208,54 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         Spans::from(""),
 
         Spans::from(vec![
-            Span::from(" Active sats:   "),
+            Span::from(" Active:   "),
             Span::styled(
-                format!("{:>23}", app.active_sats.to_formatted_string(&Locale::en)),
+                format!("{:>28} sats", (app.active_sats / 1000).to_formatted_string(&Locale::en)),
                 Style::default().fg(Color::Green),
             ),
         ]),
         Spans::from(vec![
-            Span::from(" Pending sats:  "),
+            Span::from(" Pending:  "),
             Span::styled(
-                format!("{:>23}", app.pending_sats.to_formatted_string(&Locale::en)),
+                format!("{:>28} sats", (app.pending_sats / 1000).to_formatted_string(&Locale::en)),
                 Style::default().fg(Color::Yellow),
             ),
         ]),
         Spans::from(vec![
-            Span::from(" Sleeping sats: "),
+            Span::from(" Sleeping: "),
             Span::styled(
-                format!("{:>23}", app.sleeping_sats.to_formatted_string(&Locale::en)),
+                format!("{:>28} sats", (app.sleeping_sats / 1000).to_formatted_string(&Locale::en)),
                 Style::default().fg(Color::Gray),
             ),
         ]),
         Spans::from(""),
 
         Spans::from(vec![
+            Span::from(" Relayed per day:    "),
+            Span::styled(
+                format!("{:>18}", app.relayed_count_day.to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Spans::from(vec![
             Span::from(" Relayed per mounth: "),
             Span::styled(
-                format!("{:>18}", app.relayed_mounth.to_formatted_string(&Locale::en)),
+                format!("{:>18}", app.relayed_count_mounth.to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+
+        Spans::from(vec![
+            Span::from(" Relayed per day:    "),
+            Span::styled(
+                format!("{:>18} sats", (app.relayed_day / 1000).to_formatted_string(&Locale::en)),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
+        Spans::from(vec![
+            Span::from(" Relayed per mounth: "),
+            Span::styled(
+                format!("{:>18} sats", (app.relayed_mounth / 1000).to_formatted_string(&Locale::en)),
                 Style::default().fg(Color::Green),
             ),
         ]),
@@ -256,7 +278,7 @@ fn draw_relays_amounts<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let sparkline = Sparkline::default()
         .block(
             Block::default()
-                .title("24h relay count")
+                .title(format!("24h relay count (max: {})", app.relays_maximum_count))
                 .borders(Borders::LEFT | Borders::RIGHT),
         )
         .data(&app.relays_amounts_line)
@@ -268,7 +290,7 @@ fn draw_relays_volumes<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let sparkline = Sparkline::default()
         .block(
             Block::default()
-                .title("24h relay volumes")
+                .title(format!("24h relay volumes, (max: {} sats)", (app.relays_maximum_volume / 1000).to_formatted_string(&Locale::en)))
                 .borders(Borders::LEFT | Borders::RIGHT),
         )
         .data(&app.relays_volumes_line)
