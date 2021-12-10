@@ -1,4 +1,6 @@
 use crossterm::event::KeyCode;
+use itertools::Itertools;
+use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -6,7 +8,7 @@ use std::time::Duration;
 use super::client::{
     audit::AuditInfo,
     channel::{ChannelInfo, ChannelState},
-    node::NodeInfo,
+    node::{NetworkNode, NodeInfo},
     Client,
 };
 
@@ -45,8 +47,19 @@ pub struct App {
     pub relays_amounts_line: Vec<u64>,
     pub relays_volumes_line: Vec<u64>,
 
+    pub channels_stats: Vec<ChannelStats>,
+
     pub channels: Vec<ChannelInfo>,
     pub audit: AuditInfo,
+    pub known_nodes: HashMap<String, NetworkNode>,
+}
+
+pub struct ChannelStats {
+    pub node_id: String,
+    pub chan_id: String,
+    pub alias: String,
+    pub local: u64,
+    pub remote: u64,
 }
 
 impl App {
@@ -83,8 +96,10 @@ impl App {
             relays_maximum_count: 0,
             relays_amounts_line: vec![],
             relays_volumes_line: vec![],
+            channels_stats: vec![],
             channels: vec![],
             audit: AuditInfo::default(),
+            known_nodes: HashMap::new(),
         })
     }
 
@@ -331,12 +346,37 @@ impl App {
             self.relays_maximum_volume = max_volume;
         }
     }
+
+    pub fn get_channels_stats(&self) -> Vec<ChannelStats> {
+        self.channels
+            .iter()
+            .map(|c| self.get_channel_stats(c))
+            .collect()
+    }
+
+    pub fn get_channel_stats(&self, chan: &ChannelInfo) -> ChannelStats {
+        ChannelStats {
+            node_id: chan.node_id.clone(),
+            chan_id: chan.channel_id.clone(),
+            alias: self
+                .known_nodes
+                .get(&chan.node_id)
+                .map(|n| n.alias.clone())
+                .unwrap_or_else(|| chan.node_id.clone()),
+            local: chan.data.commitments.local_commit.spec.to_local,
+            remote: chan.data.commitments.local_commit.spec.to_remote,
+        }
+    }
 }
 
 pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error> {
     let client = mapp.lock().unwrap().client.clone();
     let chan_info = client.get_channels().await?;
     let audit_info = client.get_audit().await?;
+
+    let channel_nodes: Vec<&str> = chan_info.iter().map(|c| &c.node_id[..]).unique().collect();
+    let nodes_info = client.get_nodes(&channel_nodes).await?;
+
     {
         let mut app = mapp.lock().unwrap();
         app.channels = chan_info;
@@ -363,6 +403,12 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
         app.fee_mounth = app.get_fee_mounth();
         app.fee_day = app.get_fee_day();
         app.return_rate = app.get_return_rate();
+
+        app.known_nodes = nodes_info
+            .iter()
+            .map(|n| (n.node_id.clone(), n.clone()))
+            .collect();
+        app.channels_stats = app.get_channels_stats();
     }
     Ok(())
 }

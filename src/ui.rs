@@ -3,18 +3,18 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{error::Error, io, sync::mpsc, thread, time::Duration};
 use num_format::{Locale, ToFormattedString};
+use std::{error::Error, io, sync::mpsc, thread, time::Duration};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Clear, Paragraph, Sparkline, Tabs},
+    widgets::{Block, Borders, Clear, Paragraph, Sparkline, Tabs, Gauge},
     Frame, Terminal,
 };
 
-use super::app::{App, AppMutex};
+use super::app::{App, AppMutex, ChannelStats};
 
 pub fn run_ui(app: AppMutex) -> Result<(), Box<dyn Error>> {
     // setup terminal
@@ -165,6 +165,7 @@ fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .split(vchunks[0]);
 
     draw_info(f, app, toprow[0]);
+    draw_active_chans(f, app, toprow[1]);
     draw_relays_amounts(f, app, vchunks[1]);
     draw_relays_volumes(f, app, vchunks[2]);
 }
@@ -183,7 +184,6 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::from(format!("{:?}", app.node_info.network)),
         ]),
         Spans::from(""),
-
         Spans::from(vec![
             Span::from(" Active chans:   "),
             Span::styled(
@@ -206,56 +206,74 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             ),
         ]),
         Spans::from(""),
-
         Spans::from(vec![
             Span::from(" Active:   "),
             Span::styled(
-                format!("{:>28} sats", (app.active_sats / 1000).to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>28} sats",
+                    (app.active_sats / 1000).to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Green),
             ),
         ]),
         Spans::from(vec![
             Span::from(" Pending:  "),
             Span::styled(
-                format!("{:>28} sats", (app.pending_sats / 1000).to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>28} sats",
+                    (app.pending_sats / 1000).to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Yellow),
             ),
         ]),
         Spans::from(vec![
             Span::from(" Sleeping: "),
             Span::styled(
-                format!("{:>28} sats", (app.sleeping_sats / 1000).to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>28} sats",
+                    (app.sleeping_sats / 1000).to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Gray),
             ),
         ]),
         Spans::from(""),
-
         Spans::from(vec![
             Span::from(" Relayed per day:    "),
             Span::styled(
-                format!("{:>18}", app.relayed_count_day.to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>18}",
+                    app.relayed_count_day.to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Green),
             ),
         ]),
         Spans::from(vec![
             Span::from(" Relayed per mounth: "),
             Span::styled(
-                format!("{:>18}", app.relayed_count_mounth.to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>18}",
+                    app.relayed_count_mounth.to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Green),
             ),
         ]),
-
         Spans::from(vec![
             Span::from(" Relayed per day:    "),
             Span::styled(
-                format!("{:>18} sats", (app.relayed_day / 1000).to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>18} sats",
+                    (app.relayed_day / 1000).to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Green),
             ),
         ]),
         Spans::from(vec![
             Span::from(" Relayed per mounth: "),
             Span::styled(
-                format!("{:>18} sats", (app.relayed_mounth / 1000).to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>18} sats",
+                    (app.relayed_mounth / 1000).to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Green),
             ),
         ]),
@@ -267,18 +285,23 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             ),
         ]),
         Spans::from(""),
-
         Spans::from(vec![
             Span::from(" Fee per day:    "),
             Span::styled(
-                format!("{:>22} sats", (app.fee_day / 1000).to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>22} sats",
+                    (app.fee_day / 1000).to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Green),
             ),
         ]),
         Spans::from(vec![
             Span::from(" Fee per mounth: "),
             Span::styled(
-                format!("{:>22} sats", (app.fee_mounth / 1000).to_formatted_string(&Locale::en)),
+                format!(
+                    "{:>22} sats",
+                    (app.fee_mounth / 1000).to_formatted_string(&Locale::en)
+                ),
                 Style::default().fg(Color::Green),
             ),
         ]),
@@ -297,11 +320,90 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     f.render_widget(paragraph, area);
 }
 
+fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
+    let hchunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .margin(1)
+        .constraints(
+            [
+                Constraint::Percentage(25),
+                Constraint::Percentage(25),
+                Constraint::Percentage(25),
+                Constraint::Percentage(25),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    let vchunks: Vec<Vec<Rect>> = hchunks
+        .iter()
+        .map(|column| {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints(
+                    [
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(20),
+                    ]
+                    .as_ref(),
+                )
+                .split(*column)
+        })
+        .collect();
+
+    let chans_in_column = 5;
+    for (i, c) in app.channels_stats.iter().take(chans_in_column * vchunks.len()).enumerate() {
+        draw_active_chan(f, app, vchunks[i / chans_in_column][i % chans_in_column], c);
+    }
+}
+
+fn draw_active_chan<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect, chan: &ChannelStats) {
+    let vchunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Min(2),
+            ]
+            .as_ref(),
+        )
+        .split(area);
+
+    let chan_tittle = vec![Spans::from(vec![Span::styled(
+        chan.alias.clone(),
+        Style::default().fg(Color::White),
+    )])];
+    let paragraph = Paragraph::new(chan_tittle).alignment(Alignment::Left);
+    f.render_widget(paragraph, vchunks[0]);
+
+    let channel_ratio = chan.local as f64 / (chan.local + chan.remote) as f64;
+    let local = (chan.local/1000).to_formatted_string(&Locale::en);
+    let remote = (chan.remote/1000).to_formatted_string(&Locale::en);
+    let gauge = Gauge::default()
+        .gauge_style(
+            Style::default()
+                .fg(Color::Blue)
+                .bg(Color::Gray)
+                .add_modifier(Modifier::ITALIC),
+        )
+        .ratio(channel_ratio)
+        .label(format!("{}/{}", local, remote));
+    f.render_widget(gauge, vchunks[1]);
+}
+
 fn draw_relays_amounts<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let sparkline = Sparkline::default()
         .block(
             Block::default()
-                .title(format!("24h relay count (max: {})", app.relays_maximum_count))
+                .title(format!(
+                    "24h relay count (max: {})",
+                    app.relays_maximum_count
+                ))
                 .borders(Borders::LEFT | Borders::RIGHT),
         )
         .data(&app.relays_amounts_line)
@@ -313,7 +415,10 @@ fn draw_relays_volumes<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let sparkline = Sparkline::default()
         .block(
             Block::default()
-                .title(format!("24h relay volumes, (max: {} sats)", (app.relays_maximum_volume / 1000).to_formatted_string(&Locale::en)))
+                .title(format!(
+                    "24h relay volumes, (max: {} sats)",
+                    (app.relays_maximum_volume / 1000).to_formatted_string(&Locale::en)
+                ))
                 .borders(Borders::LEFT | Borders::RIGHT),
         )
         .data(&app.relays_volumes_line)

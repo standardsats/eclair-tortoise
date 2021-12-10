@@ -3,7 +3,8 @@ pub mod channel;
 pub mod node;
 
 use thiserror::Error;
-use self::{node::NodeInfo, channel::ChannelInfo, audit::AuditInfo};
+use self::{node::{NodeInfo, NetworkNode}, channel::ChannelInfo, audit::AuditInfo};
+use std::collections::HashMap;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -60,6 +61,20 @@ impl Client {
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "audit"))
+                .basic_auth("", Some(self.password.clone()))
+        };
+        // println!("{:?}", builder().send().await?.text().await?);
+        Ok(builder().send().await?.error_for_status()?.json().await?)
+    }
+
+    /// Get information about given nodes
+    pub async fn get_nodes(&self, ids: &[&str]) -> Result<Vec<NetworkNode>> {
+        let mut params = HashMap::new();
+        params.insert("nodeIds", ids.join(","));
+        let builder = || {
+            self.client
+                .post(format!("{}/{}", self.url, "nodes"))
+                .form(&params)
                 .basic_auth("", Some(self.password.clone()))
         };
         // println!("{:?}", builder().send().await?.text().await?);

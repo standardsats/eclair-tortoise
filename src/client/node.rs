@@ -39,3 +39,14 @@ pub enum NodeNetwork {
     Mainnet,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNode {
+    pub signature: String,
+    pub features: NodeFeatures,
+    pub timestamp: u64,
+    pub node_id: String,
+    pub rgb_color: String,
+    pub alias: String,
+    pub addresses: Vec<String>,
+}
