@@ -356,7 +356,9 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .collect();
 
     let chans_in_column = 5;
-    for (i, c) in app.channels_stats.iter().take(chans_in_column * vchunks.len()).enumerate() {
+    let mut chans = app.channels_stats.clone();
+    chans.sort_by(|a, b| b.relays_volume.partial_cmp(&a.relays_volume).unwrap());
+    for (i, c) in chans.iter().take(chans_in_column * vchunks.len()).enumerate() {
         draw_active_chan(f, app, vchunks[i / chans_in_column][i % chans_in_column], c);
     }
 }
@@ -368,11 +370,16 @@ fn draw_active_chan<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect, chan: &
             [
                 Constraint::Length(1),
                 Constraint::Length(1),
-                Constraint::Min(2),
+                Constraint::Min(1),
             ]
             .as_ref(),
         )
         .split(area);
+
+    let hchunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(vchunks[2]);
 
     let chan_tittle = vec![Spans::from(vec![Span::styled(
         chan.alias.clone(),
@@ -394,6 +401,28 @@ fn draw_active_chan<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect, chan: &
         .ratio(channel_ratio)
         .label(format!("{}/{}", local, remote));
     f.render_widget(gauge, vchunks[1]);
+
+    let col0_spans = vec![
+        Spans::from(vec![
+            Span::from("Relays: ".to_owned()),
+            Span::styled(format!("{}", chan.relays_amount), Style::default().fg(Color::Gray)),
+        ]),
+        Spans::from(vec![
+            Span::from("Fees: ".to_owned()),
+            Span::styled((chan.relays_fees / 1000).to_formatted_string(&Locale::en), Style::default().fg(Color::Green)),
+        ])
+    ];
+    let stats_col0 = Paragraph::new(col0_spans).alignment(Alignment::Left);
+    f.render_widget(stats_col0, hchunks[0]);
+
+    let col1_spans = vec![
+        Spans::from(vec![
+            Span::from("Volume: ".to_owned()),
+            Span::styled((chan.relays_volume / 1000).to_formatted_string(&Locale::en), Style::default().fg(Color::Gray)),
+        ])
+    ];
+    let stats_col1 = Paragraph::new(col1_spans).alignment(Alignment::Left);
+    f.render_widget(stats_col1, hchunks[1]);
 }
 
 fn draw_relays_amounts<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {

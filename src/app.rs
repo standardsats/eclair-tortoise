@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::client::{
-    audit::AuditInfo,
+    audit::{AuditInfo, RelayedInfo},
     channel::{ChannelInfo, ChannelState},
     node::{NetworkNode, NodeInfo},
     Client,
@@ -54,12 +54,16 @@ pub struct App {
     pub known_nodes: HashMap<String, NetworkNode>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ChannelStats {
     pub node_id: String,
     pub chan_id: String,
     pub alias: String,
     pub local: u64,
     pub remote: u64,
+    pub relays_amount: u64,
+    pub relays_volume: u64,
+    pub relays_fees: u64,
 }
 
 impl App {
@@ -355,6 +359,14 @@ impl App {
     }
 
     pub fn get_channel_stats(&self, chan: &ChannelInfo) -> ChannelStats {
+        let now = chrono::offset::Utc::now().timestamp();
+        let interval = 24 * 3600;
+        let relays: Vec<&RelayedInfo> = self.audit
+            .relayed
+            .iter()
+            .filter(|s| (s.from_channel_id == chan.channel_id || s.to_channel_id == chan.channel_id) && s.timestamp / 1000 > (now - interval) as u64)
+            .collect();
+
         ChannelStats {
             node_id: chan.node_id.clone(),
             chan_id: chan.channel_id.clone(),
@@ -365,6 +377,9 @@ impl App {
                 .unwrap_or_else(|| chan.node_id.clone()),
             local: chan.data.commitments.local_commit.spec.to_local,
             remote: chan.data.commitments.local_commit.spec.to_remote,
+            relays_amount: relays.iter().map(|_| 1).sum(),
+            relays_volume: relays.iter().map(|r| r.amount_in).sum(),
+            relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
         }
     }
 }
