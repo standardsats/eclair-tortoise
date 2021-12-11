@@ -95,7 +95,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, mapp: AppMutex) {
     app.resize(size.width);
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
         .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
         .split(size);
 
@@ -147,12 +146,11 @@ fn ui<B: Backend>(f: &mut Frame<B>, mapp: AppMutex) {
 fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let vchunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
         .constraints(
             [
-                Constraint::Percentage(60),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
+                Constraint::Percentage(80),
+                Constraint::Percentage(10),
+                Constraint::Percentage(10),
             ]
             .as_ref(),
         )
@@ -160,8 +158,7 @@ fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
 
     let toprow = Layout::default()
         .direction(Direction::Horizontal)
-        .margin(1)
-        .constraints([Constraint::Max(40), Constraint::Percentage(80)].as_ref())
+        .constraints([Constraint::Length(40), Constraint::Percentage(80)].as_ref())
         .split(vchunks[0]);
 
     draw_info(f, app, toprow[0]);
@@ -173,7 +170,6 @@ fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
 fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let hchunks = Layout::default()
         .direction(Direction::Horizontal)
-        .margin(1)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(area);
 
@@ -186,17 +182,17 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         ]),
         Spans::from(""),
 
-        Spans::from("Channels"),
-        Spans::from(vec![
-            Span::from("Active:"),
-        ]),
-        Spans::from(vec![
-            Span::from("Pending:"),
-        ]),
-        Spans::from(vec![
-            Span::from("Sleeping:"),
-        ]),
-        Spans::from(""),
+        // Spans::from("Channels"),
+        // Spans::from(vec![
+        //     Span::from("Active:"),
+        // ]),
+        // Spans::from(vec![
+        //     Span::from("Pending:"),
+        // ]),
+        // Spans::from(vec![
+        //     Span::from("Sleeping:"),
+        // ]),
+        // Spans::from(""),
 
         Spans::from("Channels volumes"),
         Spans::from(vec![
@@ -257,26 +253,26 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         ]),
         Spans::from(""),
 
-        Spans::from(""),
-        Spans::from(vec![
-            Span::styled(
-                format!("{:?}", app.active_chans),
-                Style::default().fg(Color::Green),
-            ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!("{:?}", app.pending_chans),
-                Style::default().fg(Color::Yellow),
-            ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!("{:?}", app.sleeping_chans),
-                Style::default().fg(Color::Gray),
-            ),
-        ]),
-        Spans::from(""),
+        // Spans::from(""),
+        // Spans::from(vec![
+        //     Span::styled(
+        //         format!("{:?}", app.active_chans),
+        //         Style::default().fg(Color::Green),
+        //     ),
+        // ]),
+        // Spans::from(vec![
+        //     Span::styled(
+        //         format!("{:?}", app.pending_chans),
+        //         Style::default().fg(Color::Yellow),
+        //     ),
+        // ]),
+        // Spans::from(vec![
+        //     Span::styled(
+        //         format!("{:?}", app.sleeping_chans),
+        //         Style::default().fg(Color::Gray),
+        //     ),
+        // ]),
+        // Spans::from(""),
 
         Spans::from(""),
         Spans::from(vec![
@@ -392,10 +388,8 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .margin(1)
         .constraints(
             [
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
+                Constraint::Percentage(50),
+                Constraint::Percentage(50),
             ]
             .as_ref(),
         )
@@ -409,11 +403,10 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
                 .margin(1)
                 .constraints(
                     [
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
-                        Constraint::Percentage(20),
+                        Constraint::Percentage(25),
+                        Constraint::Percentage(25),
+                        Constraint::Percentage(25),
+                        Constraint::Percentage(25),
                     ]
                     .as_ref(),
                 )
@@ -421,7 +414,7 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         })
         .collect();
 
-    let chans_in_column = 5;
+    let chans_in_column = 4;
     let mut chans = app.channels_stats.clone();
     chans.sort_by(|a, b| b.relays_volume.partial_cmp(&a.relays_volume).unwrap());
     for (i, c) in chans.iter().take(chans_in_column * vchunks.len()).enumerate() {
