@@ -143,6 +143,7 @@ impl App {
                 c.state == ChannelState::Closing
                     || c.state == ChannelState::Opening
                     || c.state == ChannelState::Syncing
+                    || c.state == ChannelState::WaitForFundingConfirmed
             })
             .count()
     }

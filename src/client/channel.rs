@@ -12,7 +12,7 @@ pub struct ChannelInfo {
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ChannelState {
     Normal,
     Opening,
