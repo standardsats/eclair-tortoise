@@ -158,28 +158,45 @@ impl App {
     pub fn get_active_sats(&self) -> u64 {
         self.channels
             .iter()
-            .filter(|c| c.state == ChannelState::Normal)
-            .map(|c| c.data.commitments.local_commit.spec.to_local)
+            .filter_map(|c| {
+                if c.state == ChannelState::Normal {
+                    c.data.as_ref()
+                } else {
+                    None
+                }
+            })
+            .map(|c| c.commitments.local_commit.spec.to_local)
             .sum()
     }
 
     pub fn get_pending_sats(&self) -> u64 {
         self.channels
             .iter()
-            .filter(|c| {
-                c.state == ChannelState::Closing
+            .filter_map(|c| {
+                if c.state == ChannelState::Closing
                     || c.state == ChannelState::Opening
                     || c.state == ChannelState::Syncing
+                {
+                    c.data.as_ref()
+                } else {
+                    None
+                }
             })
-            .map(|c| c.data.commitments.local_commit.spec.to_local)
+            .map(|c| c.commitments.local_commit.spec.to_local)
             .sum()
     }
 
     pub fn get_sleeping_sats(&self) -> u64 {
         self.channels
             .iter()
-            .filter(|c| c.state == ChannelState::Offline)
-            .map(|c| c.data.commitments.local_commit.spec.to_local)
+            .filter_map(|c| {
+                if c.state == ChannelState::Offline {
+                    c.data.as_ref()
+                } else {
+                    None
+                }
+            })
+            .map(|c| c.commitments.local_commit.spec.to_local)
             .sum()
     }
 
@@ -362,10 +379,14 @@ impl App {
     pub fn get_channel_stats(&self, chan: &ChannelInfo) -> ChannelStats {
         let now = chrono::offset::Utc::now().timestamp();
         let interval = 24 * 3600;
-        let relays: Vec<&RelayedInfo> = self.audit
+        let relays: Vec<&RelayedInfo> = self
+            .audit
             .relayed
             .iter()
-            .filter(|s| (s.from_channel_id == chan.channel_id || s.to_channel_id == chan.channel_id) && s.timestamp / 1000 > (now - interval) as u64)
+            .filter(|s| {
+                (s.from_channel_id == chan.channel_id || s.to_channel_id == chan.channel_id)
+                    && s.timestamp / 1000 > (now - interval) as u64
+            })
             .collect();
 
         ChannelStats {
@@ -376,8 +397,14 @@ impl App {
                 .get(&chan.node_id)
                 .map(|n| n.alias.clone())
                 .unwrap_or_else(|| chan.node_id.clone()),
-            local: chan.data.commitments.local_commit.spec.to_local,
-            remote: chan.data.commitments.local_commit.spec.to_remote,
+            local: chan
+                .data
+                .as_ref()
+                .map_or(0, |c| c.commitments.local_commit.spec.to_local),
+            remote: chan
+                .data
+                .as_ref()
+                .map_or(0, |c| c.commitments.local_commit.spec.to_remote),
             relays_amount: relays.iter().map(|_| 1).sum(),
             relays_volume: relays.iter().map(|r| r.amount_in).sum(),
             relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),

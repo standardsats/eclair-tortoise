@@ -52,7 +52,7 @@ impl Client {
         // use std::io::prelude::*;
         // let now = chrono::offset::Utc::now().timestamp();
         // let mut file = std::fs::File::create(format!("log-{}.txt", now)).unwrap();
-        // let str = format!("{:?}", builder().send().await?.text().await?);
+        // let str = format!("{}", builder().send().await?.text().await?);
         // file.write_all(str.as_bytes()).unwrap();
         Ok(builder().send().await?.error_for_status()?.json().await?)
     }
