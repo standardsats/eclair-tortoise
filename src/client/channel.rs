@@ -8,11 +8,11 @@ pub struct ChannelInfo {
     pub node_id: String,
     pub channel_id: String,
     pub state: ChannelState,
-    pub data: ChannelData,
+    pub data: Option<ChannelData>, // None could be for hosted channel
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ChannelState {
     Normal,
     Opening,
