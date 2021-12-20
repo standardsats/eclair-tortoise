@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use log::*;
 
 use super::client::{
     audit::{AuditInfo, RelayedInfo},
@@ -341,15 +342,11 @@ impl App {
                         Err(e) => {
                             let now = chrono::offset::Utc::now().timestamp();
                             let estr = format!("App worker failed at {} with: {}", now, e);
-                            // println!("{}", estr);
+                            error!("{}", estr);
                             let mut app = mapp.lock().unwrap();
                             app.errors.push(estr);
                         }
-                        _ => {
-                            // let mut app = mapp.lock().unwrap();
-                            // let num_chans = app.channels.len();
-                            // app.errors.push(format!("All is ok! Got channels: {}", num_chans))
-                        }
+                        _ => (),
                     }
                     tokio::time::sleep(Duration::from_secs(20)).await;
                 }
