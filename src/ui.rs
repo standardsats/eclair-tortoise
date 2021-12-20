@@ -13,6 +13,7 @@ use tui::{
     widgets::{Block, Borders, Clear, Paragraph, Sparkline, Tabs, Gauge},
     Frame, Terminal,
 };
+use log::*;
 
 use super::app::{App, AppMutex, ChannelStats};
 
@@ -74,14 +75,14 @@ fn events(tick_rate: Duration) -> mpsc::Receiver<AppEvent> {
     thread::spawn(move || loop {
         if let Ok(Event::Key(key)) = event::read() {
             if let Err(err) = keys_tx.send(AppEvent::Input(key)) {
-                eprintln!("{}", err);
+                error!("{}", err);
                 return;
             }
         }
     });
     thread::spawn(move || loop {
         if let Err(err) = tx.send(AppEvent::Tick) {
-            eprintln!("{}", err);
+            error!("{}", err);
             break;
         }
         thread::sleep(tick_rate);

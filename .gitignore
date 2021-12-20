@@ -3,3 +3,4 @@ result
 tortoise.db
 log.txt
 log-*.txt
+eclair-tortoise.log

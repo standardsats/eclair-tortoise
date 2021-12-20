@@ -2,14 +2,17 @@ pub mod audit;
 pub mod channel;
 pub mod node;
 
-use thiserror::Error;
+use log::*;
 use self::{node::{NodeInfo, NetworkNode}, channel::ChannelInfo, audit::AuditInfo};
 use std::collections::HashMap;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Requesting server error: {0}")]
     ReqwestErr(#[from] reqwest::Error),
+    #[error("Failed to decode: {0}")]
+    DecodingErr(#[from] serde_json::Error),
 }
 
 /// Alias for a `Result` with the error type `self::Error`.
@@ -38,8 +41,10 @@ impl Client {
                 .post(format!("{}/{}", self.url, "getinfo"))
                 .basic_auth("", Some(self.password.clone()))
         };
-        // println!("{:?}", builder().send().await?.text().await?);
-        Ok(builder().send().await?.error_for_status()?.json().await?)
+        trace!("Requsting getinfo");
+        let txt = builder().send().await?.error_for_status()?.text().await?;
+        trace!("Response from getinfo: {}", txt);
+        Ok(serde_json::from_str(&txt)?)
     }
 
     pub async fn get_channels(&self) -> Result<Vec<ChannelInfo>> {
@@ -48,13 +53,10 @@ impl Client {
                 .post(format!("{}/{}", self.url, "channels"))
                 .basic_auth("", Some(self.password.clone()))
         };
-        // println!("{:?}", builder().send().await?.text().await?);
-        // use std::io::prelude::*;
-        // let now = chrono::offset::Utc::now().timestamp();
-        // let mut file = std::fs::File::create(format!("log-{}.txt", now)).unwrap();
-        // let str = format!("{}", builder().send().await?.text().await?);
-        // file.write_all(str.as_bytes()).unwrap();
-        Ok(builder().send().await?.error_for_status()?.json().await?)
+        trace!("Requsting channels");
+        let txt = builder().send().await?.error_for_status()?.text().await?;
+        trace!("Response from channels: {}", txt);
+        Ok(serde_json::from_str(&txt)?)
     }
 
     pub async fn get_audit(&self) -> Result<AuditInfo> {
@@ -63,8 +65,10 @@ impl Client {
                 .post(format!("{}/{}", self.url, "audit"))
                 .basic_auth("", Some(self.password.clone()))
         };
-        // println!("{:?}", builder().send().await?.text().await?);
-        Ok(builder().send().await?.error_for_status()?.json().await?)
+        trace!("Requsting audit");
+        let txt = builder().send().await?.error_for_status()?.text().await?;
+        trace!("Response from audit: {}", txt);
+        Ok(serde_json::from_str(&txt)?)
     }
 
     /// Get information about given nodes
@@ -77,7 +81,9 @@ impl Client {
                 .form(&params)
                 .basic_auth("", Some(self.password.clone()))
         };
-        // println!("{:?}", builder().send().await?.text().await?);
-        Ok(builder().send().await?.error_for_status()?.json().await?)
+        trace!("Requsting nodes");
+        let txt = builder().send().await?.error_for_status()?.text().await?;
+        trace!("Response from nodes: {}", txt);
+        Ok(serde_json::from_str(&txt)?)
     }
 }

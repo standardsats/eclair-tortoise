@@ -15,4 +15,12 @@ pub struct Opts {
     /// Path to the local state database directory. Require read-write access.
     #[clap(short, long, default_value = "./tortoise.db")]
     pub state: String,
+
+    /// Logging level for putting messages into the log file.
+    #[clap(short, long, default_value = "Warn")]
+    pub level: log::LevelFilter,
+
+    /// Location of log file to write to
+    #[clap(long, default_value = "./eclair-tortoise.log")]
+    pub logfile: String,
 }
