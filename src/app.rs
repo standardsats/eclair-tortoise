@@ -1,5 +1,6 @@
 use crossterm::event::KeyCode;
 use itertools::Itertools;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -279,7 +280,7 @@ impl App {
             .filter(|s| s.timestamp / 1000 > (now - App::LINE_PERIOD as i64) as u64)
             .map(|s| s.timestamp)
             .collect();
-        relays.sort_by(|a, b| a.partial_cmp(&b).unwrap());
+        relays.sort_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal));
 
         let line_width = self.screen_width as u64 - App::LINE_MARGINS;
         let mut result = vec![0; line_width as usize + 1];
