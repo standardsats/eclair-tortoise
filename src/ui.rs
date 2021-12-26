@@ -183,18 +183,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         ]),
         Spans::from(""),
 
-        // Spans::from("Channels"),
-        // Spans::from(vec![
-        //     Span::from("Active:"),
-        // ]),
-        // Spans::from(vec![
-        //     Span::from("Pending:"),
-        // ]),
-        // Spans::from(vec![
-        //     Span::from("Sleeping:"),
-        // ]),
-        // Spans::from(""),
-
+        Spans::from("Channels activity"),
         Spans::from("Channels volumes"),
         Spans::from(vec![
             Span::from("Active:"),
@@ -254,26 +243,22 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         ]),
         Spans::from(""),
 
-        // Spans::from(""),
-        // Spans::from(vec![
-        //     Span::styled(
-        //         format!("{:?}", app.active_chans),
-        //         Style::default().fg(Color::Green),
-        //     ),
-        // ]),
-        // Spans::from(vec![
-        //     Span::styled(
-        //         format!("{:?}", app.pending_chans),
-        //         Style::default().fg(Color::Yellow),
-        //     ),
-        // ]),
-        // Spans::from(vec![
-        //     Span::styled(
-        //         format!("{:?}", app.sleeping_chans),
-        //         Style::default().fg(Color::Gray),
-        //     ),
-        // ]),
-        // Spans::from(""),
+        Spans::from(vec![
+            Span::styled(
+                format!("{:?}", app.active_chans),
+                Style::default().fg(Color::Green),
+            ),
+            Span::from("/"),
+            Span::styled(
+                format!("{:?}", app.pending_chans),
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::from("/"),
+            Span::styled(
+                format!("{:?}", app.sleeping_chans),
+                Style::default().fg(Color::Gray),
+            ),
+        ]),
 
         Spans::from(""),
         Spans::from(vec![
