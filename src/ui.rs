@@ -184,7 +184,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         Spans::from(""),
 
         Spans::from("Channels activity"),
-        Spans::from("Channels volumes"),
+        Spans::from("Channels volume"),
         Spans::from(vec![
             Span::from("Active:"),
         ]),
@@ -201,13 +201,13 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::from("per day:"),
         ]),
         Spans::from(vec![
-            Span::from("per mounth:"),
+            Span::from("per month:"),
         ]),
         Spans::from(vec![
             Span::from("per day:"),
         ]),
         Spans::from(vec![
-            Span::from("per mounth:"),
+            Span::from("per month:"),
         ]),
         Spans::from(vec![
             Span::from("percent:"),
@@ -219,7 +219,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::from("per day:"),
         ]),
         Spans::from(vec![
-            Span::from("per mounth:"),
+            Span::from("per month:"),
         ]),
         Spans::from(vec![
             Span::from("ARP year:"),
@@ -304,7 +304,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::styled(
                 format!(
                     "{}",
-                    app.relayed_count_mounth.to_formatted_string(&Locale::en)
+                    app.relayed_count_month.to_formatted_string(&Locale::en)
                 ),
                 Style::default().fg(Color::Green),
             ),
@@ -322,7 +322,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::styled(
                 format!(
                     "{} sats",
-                    (app.relayed_mounth / 1000).to_formatted_string(&Locale::en)
+                    (app.relayed_month / 1000).to_formatted_string(&Locale::en)
                 ),
                 Style::default().fg(Color::Green),
             ),
@@ -349,7 +349,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::styled(
                 format!(
                     "{} sats",
-                    (app.fee_mounth / 1000).to_formatted_string(&Locale::en)
+                    (app.fee_month / 1000).to_formatted_string(&Locale::en)
                 ),
                 Style::default().fg(Color::Green),
             ),
