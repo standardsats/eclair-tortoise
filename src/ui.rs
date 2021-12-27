@@ -183,19 +183,8 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         ]),
         Spans::from(""),
 
-        // Spans::from("Channels"),
-        // Spans::from(vec![
-        //     Span::from("Active:"),
-        // ]),
-        // Spans::from(vec![
-        //     Span::from("Pending:"),
-        // ]),
-        // Spans::from(vec![
-        //     Span::from("Sleeping:"),
-        // ]),
-        // Spans::from(""),
-
-        Spans::from("Channels volumes"),
+        Spans::from("Channels activity"),
+        Spans::from("Channels volume"),
         Spans::from(vec![
             Span::from("Active:"),
         ]),
@@ -212,13 +201,13 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::from("per day:"),
         ]),
         Spans::from(vec![
-            Span::from("per mounth:"),
+            Span::from("per month:"),
         ]),
         Spans::from(vec![
             Span::from("per day:"),
         ]),
         Spans::from(vec![
-            Span::from("per mounth:"),
+            Span::from("per month:"),
         ]),
         Spans::from(vec![
             Span::from("percent:"),
@@ -230,7 +219,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::from("per day:"),
         ]),
         Spans::from(vec![
-            Span::from("per mounth:"),
+            Span::from("per month:"),
         ]),
         Spans::from(vec![
             Span::from("ARP year:"),
@@ -254,26 +243,22 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         ]),
         Spans::from(""),
 
-        // Spans::from(""),
-        // Spans::from(vec![
-        //     Span::styled(
-        //         format!("{:?}", app.active_chans),
-        //         Style::default().fg(Color::Green),
-        //     ),
-        // ]),
-        // Spans::from(vec![
-        //     Span::styled(
-        //         format!("{:?}", app.pending_chans),
-        //         Style::default().fg(Color::Yellow),
-        //     ),
-        // ]),
-        // Spans::from(vec![
-        //     Span::styled(
-        //         format!("{:?}", app.sleeping_chans),
-        //         Style::default().fg(Color::Gray),
-        //     ),
-        // ]),
-        // Spans::from(""),
+        Spans::from(vec![
+            Span::styled(
+                format!("{:?}", app.active_chans),
+                Style::default().fg(Color::Green),
+            ),
+            Span::from("/"),
+            Span::styled(
+                format!("{:?}", app.pending_chans),
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::from("/"),
+            Span::styled(
+                format!("{:?}", app.sleeping_chans),
+                Style::default().fg(Color::Gray),
+            ),
+        ]),
 
         Spans::from(""),
         Spans::from(vec![
@@ -319,7 +304,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::styled(
                 format!(
                     "{}",
-                    app.relayed_count_mounth.to_formatted_string(&Locale::en)
+                    app.relayed_count_month.to_formatted_string(&Locale::en)
                 ),
                 Style::default().fg(Color::Green),
             ),
@@ -337,7 +322,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::styled(
                 format!(
                     "{} sats",
-                    (app.relayed_mounth / 1000).to_formatted_string(&Locale::en)
+                    (app.relayed_month / 1000).to_formatted_string(&Locale::en)
                 ),
                 Style::default().fg(Color::Green),
             ),
@@ -364,7 +349,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
             Span::styled(
                 format!(
                     "{} sats",
-                    (app.fee_mounth / 1000).to_formatted_string(&Locale::en)
+                    (app.fee_month / 1000).to_formatted_string(&Locale::en)
                 ),
                 Style::default().fg(Color::Green),
             ),

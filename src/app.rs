@@ -1,5 +1,6 @@
 use crossterm::event::KeyCode;
 use itertools::Itertools;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -33,12 +34,12 @@ pub struct App {
     pub pending_sats: u64,
     pub sleeping_sats: u64,
 
-    pub relayed_count_mounth: u64,
+    pub relayed_count_month: u64,
     pub relayed_count_day: u64,
-    pub relayed_mounth: u64,
+    pub relayed_month: u64,
     pub relayed_day: u64,
 
-    pub fee_mounth: u64,
+    pub fee_month: u64,
     pub fee_day: u64,
     pub return_rate: f64, // ARP per year
 
@@ -89,11 +90,11 @@ impl App {
             active_sats: 0,
             pending_sats: 0,
             sleeping_sats: 0,
-            relayed_count_mounth: 0,
+            relayed_count_month: 0,
             relayed_count_day: 0,
-            relayed_mounth: 0,
+            relayed_month: 0,
             relayed_day: 0,
-            fee_mounth: 0,
+            fee_month: 0,
             fee_day: 0,
             return_rate: 0.0,
             screen_width: 80,
@@ -211,7 +212,7 @@ impl App {
             .sum()
     }
 
-    pub fn get_relayed_mounth(&self) -> u64 {
+    pub fn get_relayed_month(&self) -> u64 {
         self.get_relayed(30 * 24 * 3600)
     }
 
@@ -229,7 +230,7 @@ impl App {
             .sum()
     }
 
-    pub fn get_relayed_count_mounth(&self) -> u64 {
+    pub fn get_relayed_count_month(&self) -> u64 {
         self.get_relayed_count(30 * 24 * 3600)
     }
 
@@ -247,7 +248,7 @@ impl App {
             .sum()
     }
 
-    pub fn get_fee_mounth(&self) -> u64 {
+    pub fn get_fee_month(&self) -> u64 {
         self.get_fee(30 * 24 * 3600)
     }
 
@@ -256,7 +257,7 @@ impl App {
     }
 
     pub fn get_return_rate(&self) -> f64 {
-        12.0 * 100.0 * (self.fee_mounth as f64) / (self.local_volume() as f64)
+        12.0 * 100.0 * (self.fee_month as f64) / (self.local_volume() as f64)
     }
 
     pub fn local_volume(&self) -> u64 {
@@ -264,7 +265,7 @@ impl App {
     }
 
     pub fn relayed_percent(&self) -> f64 {
-        100.0 * (self.relayed_mounth as f64) / (self.local_volume() as f64)
+        100.0 * (self.relayed_month as f64) / (self.local_volume() as f64)
     }
 
     const LINE_PERIOD: u64 = 24 * 3600;
@@ -279,7 +280,7 @@ impl App {
             .filter(|s| s.timestamp / 1000 > (now - App::LINE_PERIOD as i64) as u64)
             .map(|s| s.timestamp)
             .collect();
-        relays.sort_by(|a, b| a.partial_cmp(&b).unwrap());
+        relays.sort_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal));
 
         let line_width = self.screen_width as u64 - App::LINE_MARGINS;
         let mut result = vec![0; line_width as usize + 1];
@@ -435,12 +436,12 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
         app.relays_volumes_line = volumes;
         app.relays_maximum_volume = max_volume;
 
-        app.relayed_mounth = app.get_relayed_mounth();
+        app.relayed_month = app.get_relayed_month();
         app.relayed_day = app.get_relayed_day();
-        app.relayed_count_mounth = app.get_relayed_count_mounth();
+        app.relayed_count_month = app.get_relayed_count_month();
         app.relayed_count_day = app.get_relayed_count_day();
 
-        app.fee_mounth = app.get_fee_mounth();
+        app.fee_month = app.get_fee_month();
         app.fee_day = app.get_fee_day();
         app.return_rate = app.get_return_rate();
 
