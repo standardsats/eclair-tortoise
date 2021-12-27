@@ -4,7 +4,7 @@ use tui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, Paragraph, Sparkline, Gauge},
+    widgets::{Block, Borders, Gauge, Paragraph, Sparkline},
     Frame,
 };
 
@@ -29,7 +29,7 @@ pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .split(vchunks[0]);
 
     draw_info(f, app, toprow[0]);
-    // draw_active_chans(f, app, toprow[1]);
+    draw_active_chans(f, app, toprow[1]);
     draw_relays_amounts(f, app, vchunks[1]);
     draw_relays_volumes(f, app, vchunks[2]);
 }
@@ -41,74 +41,42 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .split(area);
 
     let tittles = vec![
-        Spans::from(vec![
-            Span::from("Node:"),
-        ]),
-        Spans::from(vec![
-            Span::from("Network:"),
-        ]),
+        Spans::from(vec![Span::from("Node:")]),
+        Spans::from(vec![Span::from("Network:")]),
         Spans::from(""),
-
         Spans::from("Channels activity"),
         Spans::from("Channels volume"),
-        Spans::from(vec![
-            Span::from("Active:"),
-        ]),
-        Spans::from(vec![
-            Span::from("Pending:"),
-        ]),
-        Spans::from(vec![
-            Span::from("Sleeping:"),
-        ]),
+        Spans::from(vec![Span::from("Active:")]),
+        Spans::from(vec![Span::from("Pending:")]),
+        Spans::from(vec![Span::from("Sleeping:")]),
         Spans::from(""),
-
         Spans::from("Relayed"),
-        Spans::from(vec![
-            Span::from("per day:"),
-        ]),
-        Spans::from(vec![
-            Span::from("per month:"),
-        ]),
-        Spans::from(vec![
-            Span::from("per day:"),
-        ]),
-        Spans::from(vec![
-            Span::from("per month:"),
-        ]),
-        Spans::from(vec![
-            Span::from("percent:"),
-        ]),
+        Spans::from(vec![Span::from("per day:")]),
+        Spans::from(vec![Span::from("per month:")]),
+        Spans::from(vec![Span::from("per day:")]),
+        Spans::from(vec![Span::from("per month:")]),
+        Spans::from(vec![Span::from("percent:")]),
         Spans::from(""),
-
         Spans::from("Fees"),
-        Spans::from(vec![
-            Span::from("per day:"),
-        ]),
-        Spans::from(vec![
-            Span::from("per month:"),
-        ]),
-        Spans::from(vec![
-            Span::from("ARP year:"),
-        ]),
+        Spans::from(vec![Span::from("per day:")]),
+        Spans::from(vec![Span::from("per month:")]),
+        Spans::from(vec![Span::from("ARP year:")]),
     ];
-    let block = Block::default().title("Stats").borders(Borders::TOP | Borders::BOTTOM | Borders::LEFT);
+    let block = Block::default()
+        .title("Stats")
+        .borders(Borders::TOP | Borders::BOTTOM | Borders::LEFT);
     let titles_paragraph = Paragraph::new(tittles)
         .block(block)
         .alignment(Alignment::Left);
     f.render_widget(titles_paragraph, hchunks[0]);
 
     let values = vec![
-        Spans::from(vec![
-            Span::styled(
-                app.node_info.alias.clone(),
-                Style::default().fg(Color::Green),
-            ),
-        ]),
-        Spans::from(vec![
-            Span::from(format!("{:?}", app.node_info.network)),
-        ]),
+        Spans::from(vec![Span::styled(
+            app.node_info.alias.clone(),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::from(format!("{:?}", app.node_info.network))]),
         Spans::from(""),
-
         Spans::from(vec![
             Span::styled(
                 format!("{:?}", app.active_chans),
@@ -125,107 +93,79 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
                 Style::default().fg(Color::Gray),
             ),
         ]),
-
         Spans::from(""),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{} sats",
-                    (app.active_sats / 1000).to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Green),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{} sats",
+                (app.active_sats / 1000).to_formatted_string(&Locale::en)
             ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{} sats",
-                    (app.pending_sats / 1000).to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Yellow),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{} sats",
+                (app.pending_sats / 1000).to_formatted_string(&Locale::en)
             ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{} sats",
-                    (app.sleeping_sats / 1000).to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Gray),
+            Style::default().fg(Color::Yellow),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{} sats",
+                (app.sleeping_sats / 1000).to_formatted_string(&Locale::en)
             ),
-        ]),
+            Style::default().fg(Color::Gray),
+        )]),
         Spans::from(""),
-
         Spans::from(""),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{}",
-                    app.relayed_count_day.to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Green),
+        Spans::from(vec![Span::styled(
+            format!("{}", app.relayed_count_day.to_formatted_string(&Locale::en)),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{}",
+                app.relayed_count_month.to_formatted_string(&Locale::en)
             ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{}",
-                    app.relayed_count_month.to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Green),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{} sats",
+                (app.relayed_day / 1000).to_formatted_string(&Locale::en)
             ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{} sats",
-                    (app.relayed_day / 1000).to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Green),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{} sats",
+                (app.relayed_month / 1000).to_formatted_string(&Locale::en)
             ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{} sats",
-                    (app.relayed_month / 1000).to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Green),
-            ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!("{:.2}%", app.relayed_percent()),
-                Style::default().fg(Color::Green),
-            ),
-        ]),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!("{:.2}%", app.relayed_percent()),
+            Style::default().fg(Color::Green),
+        )]),
         Spans::from(""),
-
         Spans::from(""),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{} sats",
-                    (app.fee_day / 1000).to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Green),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{} sats",
+                (app.fee_day / 1000).to_formatted_string(&Locale::en)
             ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!(
-                    "{} sats",
-                    (app.fee_month / 1000).to_formatted_string(&Locale::en)
-                ),
-                Style::default().fg(Color::Green),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!(
+                "{} sats",
+                (app.fee_month / 1000).to_formatted_string(&Locale::en)
             ),
-        ]),
-        Spans::from(vec![
-            Span::styled(
-                format!("{:.2}%", app.return_rate),
-                Style::default().fg(Color::Green),
-            ),
-        ]),
+            Style::default().fg(Color::Green),
+        )]),
+        Spans::from(vec![Span::styled(
+            format!("{:.2}%", app.return_rate),
+            Style::default().fg(Color::Green),
+        )]),
     ];
     let block = Block::default().borders(Borders::TOP | Borders::BOTTOM | Borders::RIGHT);
     let values_paragraph = Paragraph::new(values)
@@ -238,13 +178,7 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let hchunks = Layout::default()
         .direction(Direction::Horizontal)
         .margin(1)
-        .constraints(
-            [
-                Constraint::Percentage(50),
-                Constraint::Percentage(50),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(area);
 
     let vchunks: Vec<Vec<Rect>> = hchunks
@@ -269,7 +203,12 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let chans_in_column = 4;
     let mut chans = app.channels_stats.clone();
     chans.sort_by(|a, b| b.relays_volume.partial_cmp(&a.relays_volume).unwrap());
-    for (i, c) in chans.iter().take(chans_in_column * vchunks.len()).enumerate() {
+    for (i, c) in chans
+        .iter()
+        .take(chans_in_column * vchunks.len())
+        .filter(|c| c.is_normal_channel())
+        .enumerate()
+    {
         draw_active_chan(f, vchunks[i / chans_in_column][i % chans_in_column], c);
     }
 }
@@ -299,9 +238,15 @@ fn draw_active_chan<B: Backend>(f: &mut Frame<B>, area: Rect, chan: &ChannelStat
     let paragraph = Paragraph::new(chan_tittle).alignment(Alignment::Left);
     f.render_widget(paragraph, vchunks[0]);
 
-    let channel_ratio = chan.local as f64 / (chan.local + chan.remote) as f64;
-    let local = (chan.local/1000).to_formatted_string(&Locale::en);
-    let remote = (chan.remote/1000).to_formatted_string(&Locale::en);
+    let capacity = chan.local + chan.remote;
+
+    let channel_ratio = if capacity == 0 {
+        0.0
+    } else {
+        chan.local as f64 / capacity as f64
+    };
+    let local = (chan.local / 1000).to_formatted_string(&Locale::en);
+    let remote = (chan.remote / 1000).to_formatted_string(&Locale::en);
     let gauge = Gauge::default()
         .gauge_style(
             Style::default()
@@ -316,22 +261,29 @@ fn draw_active_chan<B: Backend>(f: &mut Frame<B>, area: Rect, chan: &ChannelStat
     let col0_spans = vec![
         Spans::from(vec![
             Span::from("Relays: ".to_owned()),
-            Span::styled(format!("{}", chan.relays_amount), Style::default().fg(Color::Gray)),
+            Span::styled(
+                format!("{}", chan.relays_amount),
+                Style::default().fg(Color::Gray),
+            ),
         ]),
         Spans::from(vec![
             Span::from("Fees: ".to_owned()),
-            Span::styled((chan.relays_fees / 1000).to_formatted_string(&Locale::en), Style::default().fg(Color::Green)),
-        ])
+            Span::styled(
+                (chan.relays_fees / 1000).to_formatted_string(&Locale::en),
+                Style::default().fg(Color::Green),
+            ),
+        ]),
     ];
     let stats_col0 = Paragraph::new(col0_spans).alignment(Alignment::Left);
     f.render_widget(stats_col0, hchunks[0]);
 
-    let col1_spans = vec![
-        Spans::from(vec![
-            Span::from("Volume: ".to_owned()),
-            Span::styled((chan.relays_volume / 1000).to_formatted_string(&Locale::en), Style::default().fg(Color::Gray)),
-        ])
-    ];
+    let col1_spans = vec![Spans::from(vec![
+        Span::from("Volume: ".to_owned()),
+        Span::styled(
+            (chan.relays_volume / 1000).to_formatted_string(&Locale::en),
+            Style::default().fg(Color::Gray),
+        ),
+    ])];
     let stats_col1 = Paragraph::new(col1_spans).alignment(Alignment::Left);
     f.render_widget(stats_col1, hchunks[1]);
 }
