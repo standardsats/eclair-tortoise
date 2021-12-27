@@ -6,6 +6,7 @@ use log::*;
 use self::{node::{NodeInfo, NetworkNode}, channel::ChannelInfo, audit::AuditInfo};
 use std::collections::HashMap;
 use thiserror::Error;
+use std::time::Duration;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -40,6 +41,7 @@ impl Client {
             self.client
                 .post(format!("{}/{}", self.url, "getinfo"))
                 .basic_auth("", Some(self.password.clone()))
+                .timeout(Duration::from_secs(10))
         };
         trace!("Requsting getinfo");
         let txt = builder().send().await?.error_for_status()?.text().await?;
@@ -52,6 +54,7 @@ impl Client {
             self.client
                 .post(format!("{}/{}", self.url, "channels"))
                 .basic_auth("", Some(self.password.clone()))
+                .timeout(Duration::from_secs(10))
         };
         trace!("Requsting channels");
         let txt = builder().send().await?.error_for_status()?.text().await?;
@@ -64,6 +67,7 @@ impl Client {
             self.client
                 .post(format!("{}/{}", self.url, "audit"))
                 .basic_auth("", Some(self.password.clone()))
+                .timeout(Duration::from_secs(10))
         };
         trace!("Requsting audit");
         let txt = builder().send().await?.error_for_status()?.text().await?;
@@ -80,6 +84,7 @@ impl Client {
                 .post(format!("{}/{}", self.url, "nodes"))
                 .form(&params)
                 .basic_auth("", Some(self.password.clone()))
+                .timeout(Duration::from_secs(10))
         };
         trace!("Requsting nodes");
         let txt = builder().send().await?.error_for_status()?.text().await?;
