@@ -29,9 +29,9 @@ pub fn draw_dashboard<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .split(vchunks[0]);
 
     draw_info(f, app, toprow[0]);
-    draw_active_chans(f, app, toprow[1]);
-    // draw_relays_amounts(f, app, vchunks[1]);
-    // draw_relays_volumes(f, app, vchunks[2]);
+    // draw_active_chans(f, app, toprow[1]);
+    draw_relays_amounts(f, app, vchunks[1]);
+    draw_relays_volumes(f, app, vchunks[2]);
 }
 
 fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
