@@ -77,6 +77,7 @@ impl App {
             db,
             tabs: vec![
                 "Dashboard".to_owned(),
+                "Channels".to_owned(),
                 "Peers".to_owned(),
                 "Onchain".to_owned(),
                 "Routing".to_owned(),
@@ -124,9 +125,10 @@ impl App {
     pub fn react_hotkey(&mut self, k: KeyCode) {
         match k {
             KeyCode::Char('d') => self.tab_index = 0,
-            KeyCode::Char('p') => self.tab_index = 1,
-            KeyCode::Char('o') => self.tab_index = 2,
-            KeyCode::Char('r') => self.tab_index = 3,
+            KeyCode::Char('c') => self.tab_index = 1,
+            KeyCode::Char('p') => self.tab_index = 2,
+            KeyCode::Char('o') => self.tab_index = 3,
+            KeyCode::Char('r') => self.tab_index = 4,
             _ => (),
         }
     }

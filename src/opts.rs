@@ -17,7 +17,7 @@ pub struct Opts {
     pub state: String,
 
     /// Logging level for putting messages into the log file.
-    #[clap(short, long, default_value = "Warn")]
+    #[clap(short, long, default_value = "Warn", env = "RUST_LOG")]
     pub level: log::LevelFilter,
 
     /// Location of log file to write to
