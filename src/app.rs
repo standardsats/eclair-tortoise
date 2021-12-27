@@ -55,6 +55,10 @@ pub struct App {
     pub audit: AuditInfo,
     pub known_nodes: HashMap<String, NetworkNode>,
 
+    // Dashboard screen
+    pub search_focused: bool,
+    pub search_line: String,
+
     // Channels screen
     pub chans_tab: usize,
 }
@@ -129,6 +133,8 @@ impl App {
             channels: vec![],
             audit: AuditInfo::default(),
             known_nodes: HashMap::new(),
+            search_focused: false,
+            search_line: "".to_owned(),
             chans_tab: 0,
         })
     }

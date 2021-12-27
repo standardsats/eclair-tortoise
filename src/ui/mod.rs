@@ -5,7 +5,7 @@ pub use dashboard::draw_dashboard;
 pub use channels::draw_channels;
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent},
+    event::{self, DisableMouseCapture, Event, KeyCode, KeyEvent},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -25,7 +25,7 @@ use super::app::{App, AppMutex};
 pub fn run_ui(app: AppMutex) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
-    execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(io::stdout(), EnterAlternateScreen)?;
 
     // restore terminal
     defer! {
@@ -35,7 +35,6 @@ pub fn run_ui(app: AppMutex) -> Result<(), Box<dyn Error>> {
         execute!(
             terminal.backend_mut(),
             LeaveAlternateScreen,
-            DisableMouseCapture
         ).unwrap();
         terminal.show_cursor().unwrap();
     }
