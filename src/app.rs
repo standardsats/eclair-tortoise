@@ -1,11 +1,11 @@
 use crossterm::event::KeyCode;
 use itertools::Itertools;
+use log::*;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use log::*;
 
 use super::client::{
     audit::{AuditInfo, RelayedInfo},
@@ -56,6 +56,13 @@ pub struct App {
     pub known_nodes: HashMap<String, NetworkNode>,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+pub enum ChannelType {
+    Normal,
+    Hosted,
+    HostedFiat,
+}
+
 #[derive(Debug, Clone)]
 pub struct ChannelStats {
     pub node_id: String,
@@ -67,11 +74,16 @@ pub struct ChannelStats {
     pub relays_volume: u64,
     pub relays_fees: u64,
     pub info_id: usize,
+    pub channel_type: ChannelType,
 }
 
 impl ChannelStats {
     pub fn volume(&self) -> u64 {
         self.local + self.remote
+    }
+
+    pub fn is_normal_channel(&self) -> bool {
+        self.channel_type == ChannelType::Normal
     }
 }
 
@@ -144,32 +156,24 @@ impl App {
         self.iterate_active_chans().count()
     }
 
-    pub fn iterate_active_chans(&self) -> impl Iterator<Item=&ChannelInfo> {
-        self.channels
-            .iter()
-            .filter(|c| c.state.is_normal())
+    pub fn iterate_active_chans(&self) -> impl Iterator<Item = &ChannelInfo> {
+        self.channels.iter().filter(|c| c.state.is_normal())
     }
 
     pub fn get_pending_chans(&self) -> usize {
         self.iterate_pending_chans().count()
     }
 
-    pub fn iterate_pending_chans(&self) -> impl Iterator<Item=&ChannelInfo> {
-        self.channels
-            .iter()
-            .filter(|c| {
-                c.state.is_pending()
-            })
+    pub fn iterate_pending_chans(&self) -> impl Iterator<Item = &ChannelInfo> {
+        self.channels.iter().filter(|c| c.state.is_pending())
     }
 
     pub fn get_sleeping_chans(&self) -> usize {
         self.iterate_sleeping_chans().count()
     }
 
-    pub fn iterate_sleeping_chans(&self) -> impl Iterator<Item=&ChannelInfo> {
-        self.channels
-            .iter()
-            .filter(|c| c.state.is_sleeping())
+    pub fn iterate_sleeping_chans(&self) -> impl Iterator<Item = &ChannelInfo> {
+        self.channels.iter().filter(|c| c.state.is_sleeping())
     }
 
     pub fn get_active_sats(&self) -> u64 {
@@ -190,8 +194,7 @@ impl App {
         self.channels
             .iter()
             .filter_map(|c| {
-                if c.state.is_pending()
-                {
+                if c.state.is_pending() {
                     c.data.as_ref()
                 } else {
                     None
@@ -421,6 +424,11 @@ impl App {
             relays_volume: relays.iter().map(|r| r.amount_in).sum(),
             relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
             info_id: i,
+            channel_type: if chan.data.is_none() {
+                ChannelType::Hosted
+            } else {
+                ChannelType::Normal
+            },
         }
     }
 }
@@ -479,7 +487,7 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
             .iter()
             .map(|n| (n.node_id.clone(), n.clone()))
             .collect();
-            trace!("Calculation of channels stats");
+        trace!("Calculation of channels stats");
         app.channels_stats = app.get_channels_stats();
     }
     trace!("Updating is done");
