@@ -54,6 +54,9 @@ pub struct App {
     pub channels: Vec<ChannelInfo>,
     pub audit: AuditInfo,
     pub known_nodes: HashMap<String, NetworkNode>,
+
+    // Channels screen
+    pub chans_tab: usize,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
@@ -126,6 +129,7 @@ impl App {
             channels: vec![],
             audit: AuditInfo::default(),
             known_nodes: HashMap::new(),
+            chans_tab: 0,
         })
     }
 
@@ -142,6 +146,18 @@ impl App {
     }
 
     pub fn react_hotkey(&mut self, k: KeyCode) {
+        match self.tab_index {
+            1 => {
+                match k {
+                    KeyCode::Char('a') => self.chans_tab = 0,
+                    KeyCode::Char('e') => self.chans_tab = 1,
+                    KeyCode::Char('s') => self.chans_tab = 2,
+                    _ => (),
+                }
+            }
+            _ => (),
+        }
+
         match k {
             KeyCode::Char('d') => self.tab_index = 0,
             KeyCode::Char('c') => self.tab_index = 1,
