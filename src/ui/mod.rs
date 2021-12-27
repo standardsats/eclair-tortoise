@@ -1,6 +1,8 @@
+pub mod channels;
 pub mod dashboard;
 
 pub use dashboard::draw_dashboard;
+pub use channels::draw_channels;
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent},
@@ -146,12 +148,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, mapp: AppMutex) {
         f.render_widget(Clear, area); //this clears out the background
         f.render_widget(paragraph, area);
     }
-}
-
-
-fn draw_channels<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
-    let block = Block::default().title("Channels").borders(Borders::ALL);
-    f.render_widget(block, area);
 }
 
 fn draw_peers<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {

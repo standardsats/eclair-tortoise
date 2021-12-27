@@ -11,7 +11,15 @@ pub struct ChannelInfo {
     pub data: Option<ChannelData>, // None could be for hosted channel
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+impl ChannelInfo {
+    pub fn volume(&self) -> u64 {
+        self.data.as_ref().map_or(0, |d| {
+            let s = &d.commitments.local_commit.spec; s.to_local + s.to_remote
+        })
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ChannelState {
     Normal,
@@ -21,6 +29,23 @@ pub enum ChannelState {
     Offline,
     Syncing,
     WaitForFundingConfirmed,
+}
+
+impl ChannelState {
+    pub fn is_normal(self) -> bool {
+        self == ChannelState::Normal
+    }
+
+    pub fn is_pending(self) -> bool {
+        self == ChannelState::Closing
+        || self == ChannelState::Opening
+        || self == ChannelState::Syncing
+        || self == ChannelState::WaitForFundingConfirmed
+    }
+
+    pub fn is_sleeping(self) -> bool {
+        self == ChannelState::Offline
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

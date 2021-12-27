@@ -66,6 +66,13 @@ pub struct ChannelStats {
     pub relays_amount: u64,
     pub relays_volume: u64,
     pub relays_fees: u64,
+    pub info_id: usize,
+}
+
+impl ChannelStats {
+    pub fn volume(&self) -> u64 {
+        self.local + self.remote
+    }
 }
 
 impl App {
@@ -134,29 +141,35 @@ impl App {
     }
 
     pub fn get_active_chans(&self) -> usize {
+        self.iterate_active_chans().count()
+    }
+
+    pub fn iterate_active_chans(&self) -> impl Iterator<Item=&ChannelInfo> {
         self.channels
             .iter()
-            .filter(|c| c.state == ChannelState::Normal)
-            .count()
+            .filter(|c| c.state.is_normal())
     }
 
     pub fn get_pending_chans(&self) -> usize {
+        self.iterate_pending_chans().count()
+    }
+
+    pub fn iterate_pending_chans(&self) -> impl Iterator<Item=&ChannelInfo> {
         self.channels
             .iter()
             .filter(|c| {
-                c.state == ChannelState::Closing
-                    || c.state == ChannelState::Opening
-                    || c.state == ChannelState::Syncing
-                    || c.state == ChannelState::WaitForFundingConfirmed
+                c.state.is_pending()
             })
-            .count()
     }
 
     pub fn get_sleeping_chans(&self) -> usize {
+        self.iterate_sleeping_chans().count()
+    }
+
+    pub fn iterate_sleeping_chans(&self) -> impl Iterator<Item=&ChannelInfo> {
         self.channels
             .iter()
-            .filter(|c| c.state == ChannelState::Offline)
-            .count()
+            .filter(|c| c.state.is_sleeping())
     }
 
     pub fn get_active_sats(&self) -> u64 {
@@ -177,9 +190,7 @@ impl App {
         self.channels
             .iter()
             .filter_map(|c| {
-                if c.state == ChannelState::Closing
-                    || c.state == ChannelState::Opening
-                    || c.state == ChannelState::Syncing
+                if c.state.is_pending()
                 {
                     c.data.as_ref()
                 } else {
@@ -194,7 +205,7 @@ impl App {
         self.channels
             .iter()
             .filter_map(|c| {
-                if c.state == ChannelState::Offline {
+                if c.state.is_sleeping() {
                     c.data.as_ref()
                 } else {
                     None
@@ -372,11 +383,12 @@ impl App {
     pub fn get_channels_stats(&self) -> Vec<ChannelStats> {
         self.channels
             .iter()
-            .map(|c| self.get_channel_stats(c))
+            .enumerate()
+            .map(|(i, c)| self.get_channel_stats(i, c))
             .collect()
     }
 
-    pub fn get_channel_stats(&self, chan: &ChannelInfo) -> ChannelStats {
+    pub fn get_channel_stats(&self, i: usize, chan: &ChannelInfo) -> ChannelStats {
         let now = chrono::offset::Utc::now().timestamp();
         let interval = 24 * 3600;
         let relays: Vec<&RelayedInfo> = self
@@ -408,21 +420,28 @@ impl App {
             relays_amount: relays.iter().map(|_| 1).sum(),
             relays_volume: relays.iter().map(|r| r.amount_in).sum(),
             relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
+            info_id: i,
         }
     }
 }
 
 pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error> {
+    trace!("Quering next node stats");
     let client = mapp.lock().unwrap().client.clone();
+    trace!("Getting channels");
     let chan_info = client.get_channels().await?;
+    trace!("Getting audit");
     let audit_info = client.get_audit().await?;
 
+    trace!("Getting nodes for that channels");
     let channel_nodes: Vec<&str> = chan_info.iter().map(|c| &c.node_id[..]).unique().collect();
     let nodes_info = client.get_nodes(&channel_nodes).await?;
 
     {
+        trace!("Start calculation");
         let mut app = mapp.lock().unwrap();
         app.channels = chan_info;
+        trace!("Calculating channels activity");
         app.active_chans = app.get_active_chans();
         app.pending_chans = app.get_pending_chans();
         app.sleeping_chans = app.get_sleeping_chans();
@@ -430,28 +449,39 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
         app.pending_sats = app.get_pending_sats();
         app.sleeping_sats = app.get_sleeping_sats();
 
+        trace!("Calculating relays amounts");
         app.audit = audit_info;
         let (amounts, max_amounts) = app.get_relays_amounts_line();
         app.relays_amounts_line = amounts;
         app.relays_maximum_count = max_amounts;
+        trace!("Calculating relays volumes");
         let (volumes, max_volume) = app.get_relays_volumes_line();
         app.relays_volumes_line = volumes;
         app.relays_maximum_volume = max_volume;
 
+        trace!("Calculating relays month");
         app.relayed_month = app.get_relayed_month();
+        trace!("Calculating relays day");
         app.relayed_day = app.get_relayed_day();
+        trace!("Calculating relays count month");
         app.relayed_count_month = app.get_relayed_count_month();
+        trace!("Calculating relays count day");
         app.relayed_count_day = app.get_relayed_count_day();
 
+        trace!("Calculating fees");
         app.fee_month = app.get_fee_month();
         app.fee_day = app.get_fee_day();
+        trace!("Calculating return rate");
         app.return_rate = app.get_return_rate();
 
+        trace!("Getting map of known nodes");
         app.known_nodes = nodes_info
             .iter()
             .map(|n| (n.node_id.clone(), n.clone()))
             .collect();
+            trace!("Calculation of channels stats");
         app.channels_stats = app.get_channels_stats();
     }
+    trace!("Updating is done");
     Ok(())
 }
