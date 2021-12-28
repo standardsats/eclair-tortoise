@@ -175,7 +175,7 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
 }
 
 fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
-    let toprow = Layout::default()
+    let headbody = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(1), Constraint::Min(1)].as_ref())
         .split(area);
@@ -184,7 +184,7 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         .direction(Direction::Horizontal)
         .margin(1)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(toprow[1]);
+        .split(headbody[1]);
 
     let vchunks: Vec<Vec<Rect>> = hchunks
         .iter()
@@ -204,6 +204,8 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
                 .split(*column)
         })
         .collect();
+
+
 
     let chans_in_column = 4;
     let mut chans = app.channels_stats.clone();
