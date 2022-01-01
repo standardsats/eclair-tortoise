@@ -54,6 +54,13 @@ pub struct App {
     pub channels: Vec<ChannelInfo>,
     pub audit: AuditInfo,
     pub known_nodes: HashMap<String, NetworkNode>,
+
+    // Dashboard screen
+    pub search_focused: bool,
+    pub search_line: String,
+
+    // Channels screen
+    pub chans_tab: usize,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
@@ -126,6 +133,9 @@ impl App {
             channels: vec![],
             audit: AuditInfo::default(),
             known_nodes: HashMap::new(),
+            search_focused: false,
+            search_line: "".to_owned(),
+            chans_tab: 0,
         })
     }
 
@@ -142,6 +152,18 @@ impl App {
     }
 
     pub fn react_hotkey(&mut self, k: KeyCode) {
+        match self.tab_index {
+            1 => {
+                match k {
+                    KeyCode::Char('a') => self.chans_tab = 0,
+                    KeyCode::Char('e') => self.chans_tab = 1,
+                    KeyCode::Char('s') => self.chans_tab = 2,
+                    _ => (),
+                }
+            }
+            _ => (),
+        }
+
         match k {
             KeyCode::Char('d') => self.tab_index = 0,
             KeyCode::Char('c') => self.tab_index = 1,
@@ -298,22 +320,32 @@ impl App {
             .collect();
         relays.sort_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal));
 
-        let line_width = self.screen_width as u64 - App::LINE_MARGINS;
+        let line_width = self.screen_width as u64 - App::LINE_MARGINS - 1;
         let mut result = vec![0; line_width as usize + 1];
         let mut max_relay = 0;
         if !relays.is_empty() {
-            let t0 = relays[0];
-            let t1 = relays[relays.len() - 1];
+            let t0 = now as u64 - App::LINE_PERIOD;
+            let t1 = now as u64;
             for t in relays.iter() {
-                let i = (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i = (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += 1;
             }
 
-            max_relay = *result.iter().max().unwrap_or(&1);
-            result = result
-                .iter()
-                .map(|a| (100.0 * (*a as f64) / (max_relay as f64)) as u64)
-                .collect();
+            if let Some(max) = result.iter().max() {
+                max_relay = *max;
+                if max_relay > 0 {
+                    result = result
+                        .iter()
+                        .map(|a| (100.0 * (*a as f64) / (max_relay as f64)) as u64)
+                        .collect();
+                } else {
+                    result = vec![];
+                }
+            } else {
+                max_relay = 0;
+                result = vec![];
+            }
+
         }
         (result, max_relay)
     }
@@ -329,22 +361,32 @@ impl App {
             .collect();
         relays.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
-        let line_width = self.screen_width as u64 - App::LINE_MARGINS;
+        let line_width = self.screen_width as u64 - App::LINE_MARGINS - 1;
         let mut result = vec![0; line_width as usize + 1];
         let mut max_relay = 0;
         if !relays.is_empty() {
-            let t0 = relays[0].1;
-            let t1 = relays[relays.len() - 1].1;
+            let t0 = now as u64 - App::LINE_PERIOD;
+            let t1 = now as u64;
             for (amount, t) in relays.iter() {
-                let i = (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i = (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += amount;
             }
 
-            max_relay = *result.iter().max().unwrap_or(&1);
-            result = result
-                .iter()
-                .map(|a| (100.0 * (*a as f64) / (max_relay as f64)) as u64)
-                .collect();
+            if let Some(max) = result.iter().max() {
+                max_relay = *max;
+                if max_relay > 0 {
+                    result = result
+                        .iter()
+                        .map(|a| (100.0 * (*a as f64) / (max_relay as f64)) as u64)
+                        .collect();
+                } else {
+                    result = vec![];
+                }
+            } else {
+                max_relay = 0;
+                result = vec![];
+            }
+
         }
         (result, max_relay)
     }
