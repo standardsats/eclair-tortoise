@@ -58,6 +58,7 @@ pub struct App {
     // Dashboard screen
     pub search_focused: bool,
     pub search_line: String,
+    pub channels_page: u64,
 
     // Channels screen
     pub chans_tab: usize,
@@ -135,6 +136,7 @@ impl App {
             known_nodes: HashMap::new(),
             search_focused: false,
             search_line: "".to_owned(),
+            channels_page: 0,
             chans_tab: 0,
         })
     }
@@ -152,16 +154,25 @@ impl App {
     }
 
     pub fn react_hotkey(&mut self, k: KeyCode) {
-        match self.tab_index {
-            1 => {
-                match k {
-                    KeyCode::Char('a') => self.chans_tab = 0,
-                    KeyCode::Char('e') => self.chans_tab = 1,
-                    KeyCode::Char('s') => self.chans_tab = 2,
-                    _ => (),
+        if self.tab_index == 0 {
+            match k {
+                KeyCode::Up => {
+                    self.channels_page = if self.channels_page == 0 {
+                        0
+                    } else {
+                        self.channels_page - 1
+                    }
                 }
+                KeyCode::Down => self.channels_page += 1,
+                _ => (),
             }
-            _ => (),
+        } else if self.tab_index == 1 {
+            match k {
+                KeyCode::Char('a') => self.chans_tab = 0,
+                KeyCode::Char('e') => self.chans_tab = 1,
+                KeyCode::Char('s') => self.chans_tab = 2,
+                _ => (),
+            }
         }
 
         match k {
@@ -318,7 +329,7 @@ impl App {
             .filter(|s| s.timestamp / 1000 > (now - App::LINE_PERIOD as i64) as u64)
             .map(|s| s.timestamp)
             .collect();
-        relays.sort_by(|a, b| a.partial_cmp(&b).unwrap_or(Ordering::Equal));
+        relays.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
 
         let line_width = self.screen_width as u64 - App::LINE_MARGINS - 1;
         let mut result = vec![0; line_width as usize + 1];
@@ -327,7 +338,8 @@ impl App {
             let t0 = now as u64 - App::LINE_PERIOD;
             let t1 = now as u64;
             for t in relays.iter() {
-                let i = (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i =
+                    (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += 1;
             }
 
@@ -345,7 +357,6 @@ impl App {
                 max_relay = 0;
                 result = vec![];
             }
-
         }
         (result, max_relay)
     }
@@ -368,7 +379,8 @@ impl App {
             let t0 = now as u64 - App::LINE_PERIOD;
             let t1 = now as u64;
             for (amount, t) in relays.iter() {
-                let i = (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i =
+                    (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += amount;
             }
 
@@ -386,7 +398,6 @@ impl App {
                 max_relay = 0;
                 result = vec![];
             }
-
         }
         (result, max_relay)
     }
@@ -397,15 +408,12 @@ impl App {
             async move {
                 loop {
                     let res = query_node_info(mapp.clone()).await;
-                    match res {
-                        Err(e) => {
-                            let now = chrono::offset::Utc::now().timestamp();
-                            let estr = format!("App worker failed at {} with: {}", now, e);
-                            error!("{}", estr);
-                            let mut app = mapp.lock().unwrap();
-                            app.errors.push(estr);
-                        }
-                        _ => (),
+                    if let Err(e) = res {
+                        let now = chrono::offset::Utc::now().timestamp();
+                        let estr = format!("App worker failed at {} with: {}", now, e);
+                        error!("{}", estr);
+                        let mut app = mapp.lock().unwrap();
+                        app.errors.push(estr);
                     }
                     tokio::time::sleep(Duration::from_secs(20)).await;
                 }
