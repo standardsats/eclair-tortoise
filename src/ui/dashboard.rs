@@ -118,14 +118,11 @@ fn draw_info<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         Spans::from(""),
         Spans::from(""),
         Spans::from(vec![Span::styled(
-            format!("{}", app.relayed_count_day.to_formatted_string(&Locale::en)),
+            app.relayed_count_day.to_formatted_string(&Locale::en),
             Style::default().fg(Color::Green),
         )]),
         Spans::from(vec![Span::styled(
-            format!(
-                "{}",
-                app.relayed_count_month.to_formatted_string(&Locale::en)
-            ),
+            app.relayed_count_month.to_formatted_string(&Locale::en),
             Style::default().fg(Color::Green),
         )]),
         Spans::from(vec![Span::styled(
@@ -205,14 +202,15 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
         })
         .collect();
 
-
-
     let chans_in_column = 4;
+    let chans_to_draw = chans_in_column * vchunks.len();
+    let chans_to_skip = app.channels_page as usize * chans_to_draw;
     let mut chans = app.channels_stats.clone();
     chans.sort_by(|a, b| b.relays_volume.partial_cmp(&a.relays_volume).unwrap());
     for (i, c) in chans
         .iter()
-        .take(chans_in_column * vchunks.len())
+        .skip(chans_to_skip)
+        .take(chans_to_draw)
         .filter(|c| c.is_normal_channel())
         .enumerate()
     {
