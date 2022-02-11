@@ -4,3 +4,7 @@ tortoise.db
 log.txt
 log-*.txt
 eclair-tortoise.log
+audit_response.json
+channels_response.json
+info_response.json 
+nodes_response.json

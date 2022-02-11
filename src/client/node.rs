@@ -1,6 +1,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use super::common::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -44,7 +45,7 @@ pub enum NodeNetwork {
 pub struct NetworkNode {
     pub signature: String,
     pub features: NodeFeatures,
-    pub timestamp: u64,
+    pub timestamp: Timestamp,
     pub node_id: String,
     pub rgb_color: String,
     pub alias: String,

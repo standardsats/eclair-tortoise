@@ -256,7 +256,7 @@ impl App {
         self.audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp / 1000 > (now - interval) as u64)
+            .filter(|s| s.timestamp.unix > (now - interval) as u64)
             .map(|s| s.amount_in)
             .sum()
     }
@@ -274,7 +274,7 @@ impl App {
         self.audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp / 1000 > (now - interval) as u64)
+            .filter(|s| s.timestamp.unix > (now - interval) as u64)
             .map(|_| 1)
             .sum()
     }
@@ -292,7 +292,7 @@ impl App {
         self.audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp / 1000 > (now - interval) as u64)
+            .filter(|s| s.timestamp.unix > (now - interval) as u64)
             .map(|s| s.amount_in - s.amount_out)
             .sum()
     }
@@ -326,8 +326,8 @@ impl App {
             .audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp / 1000 > (now - App::LINE_PERIOD as i64) as u64)
-            .map(|s| s.timestamp)
+            .filter(|s| s.timestamp.unix > (now - App::LINE_PERIOD as i64) as u64)
+            .map(|s| s.timestamp.unix)
             .collect();
         relays.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
 
@@ -339,7 +339,7 @@ impl App {
             let t1 = now as u64;
             for t in relays.iter() {
                 let i =
-                    (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                    (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += 1;
             }
 
@@ -367,8 +367,8 @@ impl App {
             .audit
             .relayed
             .iter()
-            .filter(|s| s.timestamp / 1000 > (now - App::LINE_PERIOD as i64) as u64)
-            .map(|s| (s.amount_in, s.timestamp))
+            .filter(|s| s.timestamp.unix > (now - App::LINE_PERIOD as i64) as u64)
+            .map(|s| (s.amount_in, s.timestamp.unix))
             .collect();
         relays.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
@@ -380,7 +380,7 @@ impl App {
             let t1 = now as u64;
             for (amount, t) in relays.iter() {
                 let i =
-                    (((t / 1000 - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                    (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += amount;
             }
 
@@ -450,7 +450,7 @@ impl App {
             .iter()
             .filter(|s| {
                 (s.from_channel_id == chan.channel_id || s.to_channel_id == chan.channel_id)
-                    && s.timestamp / 1000 > (now - interval) as u64
+                    && s.timestamp.unix > (now - interval) as u64
             })
             .collect();
 

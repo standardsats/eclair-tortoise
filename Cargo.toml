@@ -23,3 +23,7 @@ sled = "0.34.7"
 thiserror = "1.0"
 tokio = { version = "1", features = ["full"] }
 tui = { version = "0.16.0", features = ["crossterm"] }
+
+[features]
+default = ["trace-to-file"]
+trace-to-file = []
