@@ -1,6 +1,7 @@
 
 use serde::{Deserialize, Serialize};
 use super::node::NodeFeatures;
+use super::common::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -75,7 +76,7 @@ pub struct ChannelCommitments {
     pub channel_features: Vec<String>,
     pub local_params: ChannelLocalParams,
     pub remote_params: ChannelRemoteParams,
-    pub channel_flags: u64,
+    pub channel_flags: ChannelFlags,
     pub local_commit: LocalCommit,
     pub remote_commit: RemoteCommit,
     pub local_changes: ChannelChanges,
@@ -309,7 +310,7 @@ pub struct ChannelUpdate {
     pub signature: String,
     pub chain_hash: String,
     pub short_channel_id: String,
-    pub timestamp: u64,
+    pub timestamp: Timestamp,
     pub channel_flags: ChannelFlags,
     pub cltv_expiry_delta: u32,
     pub htlc_minimum_msat: u64,
@@ -322,6 +323,7 @@ pub struct ChannelUpdate {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ChannelFlags {
-    pub is_enabled: bool,
-    pub is_node1: bool,
+    pub is_enabled: Option<bool>,
+    pub is_node1: Option<bool>,
+    pub announce_channel: Option<bool>,
 }

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use super::common::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +48,7 @@ pub struct RelayedInfo {
     pub payment_hash: String,
     pub from_channel_id: String,
     pub to_channel_id: String,
-    pub timestamp: u64,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -57,7 +58,7 @@ pub struct SentPart {
     pub amount: u64,
     pub fees_paid: u64,
     pub to_channel_id: String,
-    pub timestamp: u64,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -65,5 +66,5 @@ pub struct SentPart {
 pub struct ReceivedPart {
     pub amount: u64,
     pub from_channel_id: String,
-    pub timestamp: u64,
+    pub timestamp: Timestamp,
 }
