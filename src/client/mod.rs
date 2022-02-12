@@ -1,5 +1,6 @@
 pub mod audit;
 pub mod channel;
+pub mod common;
 pub mod node;
 
 use log::*;
@@ -45,7 +46,14 @@ impl Client {
         };
         trace!("Requsting getinfo");
         let txt = builder().send().await?.error_for_status()?.text().await?;
-        trace!("Response from getinfo: {}", txt);
+        trace!("Response from info: {}", txt);
+        #[cfg(feature = "trace-to-file")]
+        {
+            if log_enabled!(log::Level::Trace) {
+                trace!("Response written to info_response.json");
+                std::fs::write("info_response.json", &txt).expect("Unable to write file");
+            }
+        }
         Ok(serde_json::from_str(&txt)?)
     }
 
@@ -59,6 +67,13 @@ impl Client {
         trace!("Requsting channels");
         let txt = builder().send().await?.error_for_status()?.text().await?;
         trace!("Response from channels: {}", txt);
+        #[cfg(feature = "trace-to-file")]
+        {
+            if log_enabled!(log::Level::Trace) {
+                trace!("Response written to channels_response.json");
+                std::fs::write("channels_response.json", &txt).expect("Unable to write file");
+            }
+        }
         Ok(serde_json::from_str(&txt)?)
     }
 
@@ -72,6 +87,13 @@ impl Client {
         trace!("Requsting audit");
         let txt = builder().send().await?.error_for_status()?.text().await?;
         trace!("Response from audit: {}", txt);
+        #[cfg(feature = "trace-to-file")]
+        {
+            if log_enabled!(log::Level::Trace) {
+                trace!("Response written to audit_response.json");
+                std::fs::write("audit_response.json", &txt).expect("Unable to write file");
+            }
+        }
         Ok(serde_json::from_str(&txt)?)
     }
 
@@ -89,6 +111,14 @@ impl Client {
         trace!("Requsting nodes");
         let txt = builder().send().await?.error_for_status()?.text().await?;
         trace!("Response from nodes: {}", txt);
+        #[cfg(feature = "trace-to-file")]
+        {
+            if log_enabled!(log::Level::Trace) {
+                trace!("Response written to nodes_response.json");
+                std::fs::write("nodes_response.json", &txt).expect("Unable to write file");
+            }
+        }
+       
         Ok(serde_json::from_str(&txt)?)
     }
 }
