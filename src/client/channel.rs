@@ -30,6 +30,7 @@ pub enum ChannelState {
     Offline,
     Syncing,
     WaitForFundingConfirmed,
+    WaitForAcceptChannel,
 }
 
 impl ChannelState {
