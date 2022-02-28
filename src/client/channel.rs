@@ -31,6 +31,7 @@ pub enum ChannelState {
     Syncing,
     WaitForFundingConfirmed,
     WaitForAcceptChannel,
+    Negotiating,
 }
 
 impl ChannelState {
