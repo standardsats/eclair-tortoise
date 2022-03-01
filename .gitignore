@@ -6,5 +6,7 @@ log-*.txt
 eclair-tortoise.log
 audit_response.json
 channels_response.json
-info_response.json 
+info_response.json
 nodes_response.json
+hc_all_response.json
+fc_all_response.json

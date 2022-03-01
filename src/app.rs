@@ -11,6 +11,7 @@ use super::client::{
     audit::{AuditInfo, RelayedInfo},
     channel::{ChannelInfo, ChannelState},
     node::{NetworkNode, NodeInfo},
+    hosted::{HostedChannel, FiatChannel, HcInfo, FcInfo},
     Client,
 };
 
@@ -54,6 +55,8 @@ pub struct App {
     pub channels: Vec<ChannelInfo>,
     pub audit: AuditInfo,
     pub known_nodes: HashMap<String, NetworkNode>,
+    pub hc_channels: HashMap<String, HostedChannel>,
+    pub fc_channels: HashMap<String, FiatChannel>,
 
     // Dashboard screen
     pub search_focused: bool,
@@ -134,6 +137,8 @@ impl App {
             channels: vec![],
             audit: AuditInfo::default(),
             known_nodes: HashMap::new(),
+            hc_channels: HashMap::new(),
+            fc_channels: HashMap::new(),
             search_focused: false,
             search_line: "".to_owned(),
             channels_page: 0,
@@ -495,10 +500,17 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
     let channel_nodes: Vec<&str> = chan_info.iter().map(|c| &c.node_id[..]).unique().collect();
     let nodes_info = client.get_nodes(&channel_nodes).await?;
 
+    trace!("Getting info about hosted channels");
+    let hosted_chans: HcInfo = client.get_hosted_channels().await?;
+    trace!("Getting info about fiat channels");
+    let fiat_chans: FcInfo = client.get_fiat_channels().await?;
+
     {
         trace!("Start calculation");
         let mut app = mapp.lock().unwrap();
         app.channels = chan_info;
+        app.hc_channels = hosted_chans.channels;
+        app.fc_channels = fiat_chans.channels;
         trace!("Calculating channels activity");
         app.active_chans = app.get_active_chans();
         app.pending_chans = app.get_pending_chans();
