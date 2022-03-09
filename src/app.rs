@@ -10,6 +10,7 @@ use std::time::Duration;
 use super::client::{
     audit::{AuditInfo, RelayedInfo},
     channel::{ChannelInfo, ChannelState},
+    hosted::{FcInfo, FiatChannel, HcInfo, HostedChannel},
     node::{NetworkNode, NodeInfo},
     Client,
 };
@@ -50,10 +51,14 @@ pub struct App {
     pub relays_volumes_line: Vec<u64>,
 
     pub channels_stats: Vec<ChannelStats>,
+    pub hosted_stats: Vec<ChannelStats>,
+    pub fiat_stats: Vec<ChannelStats>,
 
     pub channels: Vec<ChannelInfo>,
     pub audit: AuditInfo,
     pub known_nodes: HashMap<String, NetworkNode>,
+    pub hc_channels: HashMap<String, HostedChannel>,
+    pub fc_channels: HashMap<String, FiatChannel>,
 
     // Dashboard screen
     pub search_focused: bool,
@@ -72,7 +77,37 @@ pub enum ChannelType {
 }
 
 #[derive(Debug, Clone)]
+pub enum ChannelExt {
+    Normal,
+    Hosted,
+    HostedFiat(FiatChannelData),
+}
+
+impl ChannelExt {
+    pub fn channel_type(&self) -> ChannelType {
+        match self {
+            ChannelExt::Normal => ChannelType::Normal,
+            ChannelExt::Hosted => ChannelType::Hosted,
+            ChannelExt::HostedFiat(_) => ChannelType::HostedFiat,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FiatChannelData {
+    pub rate: u64,
+    pub fiat_balance: f64,
+}
+
+impl FiatChannelData {
+    pub fn reverse_rate(&self) -> f64 {
+        100_000_000_000.0 / self.rate as f64
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ChannelStats {
+    pub chan_state: ChannelState,
     pub node_id: String,
     pub chan_id: String,
     pub alias: String,
@@ -82,7 +117,7 @@ pub struct ChannelStats {
     pub relays_volume: u64,
     pub relays_fees: u64,
     pub info_id: usize,
-    pub channel_type: ChannelType,
+    pub channel_ext: ChannelExt,
 }
 
 impl ChannelStats {
@@ -91,7 +126,28 @@ impl ChannelStats {
     }
 
     pub fn is_normal_channel(&self) -> bool {
-        self.channel_type == ChannelType::Normal
+        self.channel_ext.channel_type() == ChannelType::Normal
+    }
+
+    pub fn fiat_balance(&self) -> f64 {
+        match &self.channel_ext {
+            ChannelExt::HostedFiat(data) => data.fiat_balance,
+            _ => 0.0,
+        }
+    }
+
+    pub fn rate(&self) -> u64 {
+        match &self.channel_ext {
+            ChannelExt::HostedFiat(data) => data.rate,
+            _ => 0,
+        }
+    }
+
+    pub fn reverse_rate(&self) -> f64 {
+        match &self.channel_ext {
+            ChannelExt::HostedFiat(data) => data.reverse_rate(),
+            _ => 0.,
+        }
     }
 }
 
@@ -108,6 +164,8 @@ impl App {
                 "Peers".to_owned(),
                 "Onchain".to_owned(),
                 "Routing".to_owned(),
+                "Hosted".to_owned(),
+                "Fiat".to_owned(),
             ],
             tab_index: 0,
             errors: vec![],
@@ -131,9 +189,13 @@ impl App {
             relays_amounts_line: vec![],
             relays_volumes_line: vec![],
             channels_stats: vec![],
+            hosted_stats: vec![],
+            fiat_stats: vec![],
             channels: vec![],
             audit: AuditInfo::default(),
             known_nodes: HashMap::new(),
+            hc_channels: HashMap::new(),
+            fc_channels: HashMap::new(),
             search_focused: false,
             search_line: "".to_owned(),
             channels_page: 0,
@@ -154,7 +216,7 @@ impl App {
     }
 
     pub fn react_hotkey(&mut self, k: KeyCode) {
-        if self.tab_index == 0 {
+        if self.tab_index == 0 || self.tab_index == 5 || self.tab_index == 6 {
             match k {
                 KeyCode::Up => {
                     self.channels_page = if self.channels_page == 0 {
@@ -181,6 +243,8 @@ impl App {
             KeyCode::Char('p') => self.tab_index = 2,
             KeyCode::Char('o') => self.tab_index = 3,
             KeyCode::Char('r') => self.tab_index = 4,
+            KeyCode::Char('h') => self.tab_index = 5,
+            KeyCode::Char('f') => self.tab_index = 6,
             _ => (),
         }
     }
@@ -207,6 +271,34 @@ impl App {
 
     pub fn iterate_sleeping_chans(&self) -> impl Iterator<Item = &ChannelInfo> {
         self.channels.iter().filter(|c| c.state.is_sleeping())
+    }
+
+    pub fn get_active_fiat_chans(&self) -> usize {
+        self.iterate_active_fiat_chans().count()
+    }
+
+    pub fn get_suspended_fiat_chans(&self) -> usize {
+        self.iterate_suspended_fiat_chans().count()
+    }
+
+    pub fn get_offline_fiat_chans(&self) -> usize {
+        self.iterate_offline_fiat_chans().count()
+    }
+
+    pub fn iterate_active_fiat_chans(&self) -> impl Iterator<Item = (&String, &FiatChannel)> {
+        self.fc_channels.iter().filter(|(_, c)| c.state.is_normal())
+    }
+
+    pub fn iterate_suspended_fiat_chans(&self) -> impl Iterator<Item = (&String, &FiatChannel)> {
+        self.fc_channels
+            .iter()
+            .filter(|(_, c)| c.state.is_pending())
+    }
+
+    pub fn iterate_offline_fiat_chans(&self) -> impl Iterator<Item = (&String, &FiatChannel)> {
+        self.fc_channels
+            .iter()
+            .filter(|(_, c)| c.state.is_sleeping())
     }
 
     pub fn get_active_sats(&self) -> u64 {
@@ -248,6 +340,23 @@ impl App {
                 }
             })
             .map(|c| c.commitments.local_commit.spec.to_local)
+            .sum()
+    }
+
+    pub fn get_total_fiat_balance(&self) -> f64 {
+        self.fiat_stats.iter().map(|s| s.fiat_balance()).sum()
+    }
+
+    pub fn get_fiat_balance_by<F: FnOnce(ChannelState) -> bool + Copy>(&self, f: F) -> f64 {
+        self.fiat_stats
+            .iter()
+            .filter_map(|c| {
+                if f(c.chan_state) {
+                    Some(c.fiat_balance())
+                } else {
+                    None
+                }
+            })
             .sum()
     }
 
@@ -338,8 +447,7 @@ impl App {
             let t0 = now as u64 - App::LINE_PERIOD;
             let t1 = now as u64;
             for t in relays.iter() {
-                let i =
-                    (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i = (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += 1;
             }
 
@@ -379,8 +487,7 @@ impl App {
             let t0 = now as u64 - App::LINE_PERIOD;
             let t1 = now as u64;
             for (amount, t) in relays.iter() {
-                let i =
-                    (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
+                let i = (((t - t0) as f64) / ((t1 - t0) as f64) * (line_width as f64)) as usize;
                 result[i] += amount;
             }
 
@@ -441,6 +548,22 @@ impl App {
             .collect()
     }
 
+    pub fn get_hosted_stats(&self) -> Vec<ChannelStats> {
+        self.hc_channels
+            .iter()
+            .enumerate()
+            .map(|(i, (chanid, c))| self.get_hosted_channel_stats(i, chanid, c))
+            .collect()
+    }
+
+    pub fn get_fiat_stats(&self) -> Vec<ChannelStats> {
+        self.fc_channels
+            .iter()
+            .enumerate()
+            .map(|(i, (chanid, c))| self.get_fiat_channel_stats(i, chanid, c))
+            .collect()
+    }
+
     pub fn get_channel_stats(&self, i: usize, chan: &ChannelInfo) -> ChannelStats {
         let now = chrono::offset::Utc::now().timestamp();
         let interval = 24 * 3600;
@@ -455,6 +578,7 @@ impl App {
             .collect();
 
         ChannelStats {
+            chan_state: chan.state,
             node_id: chan.node_id.clone(),
             chan_id: chan.channel_id.clone(),
             alias: self
@@ -474,11 +598,98 @@ impl App {
             relays_volume: relays.iter().map(|r| r.amount_in).sum(),
             relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
             info_id: i,
-            channel_type: if chan.data.is_none() {
-                ChannelType::Hosted
+            channel_ext: if chan.data.is_none() {
+                ChannelExt::Hosted
             } else {
-                ChannelType::Normal
+                ChannelExt::Normal
             },
+        }
+    }
+
+    pub fn get_hosted_channel_stats(
+        &self,
+        i: usize,
+        channel_id: &str,
+        chan: &HostedChannel,
+    ) -> ChannelStats {
+        let now = chrono::offset::Utc::now().timestamp();
+        let interval = 24 * 3600;
+        let relays: Vec<&RelayedInfo> = self
+            .audit
+            .relayed
+            .iter()
+            .filter(|s| {
+                (s.from_channel_id == channel_id || s.to_channel_id == channel_id)
+                    && s.timestamp.unix > (now - interval) as u64
+            })
+            .collect();
+        let node_id = &chan.data.commitments.remote_node_id;
+        ChannelStats {
+            chan_state: chan.state,
+            node_id: node_id.to_owned(),
+            chan_id: channel_id.to_owned(),
+            alias: self
+                .known_nodes
+                .get(&chan.data.commitments.remote_node_id)
+                .map(|n| n.alias.clone())
+                .unwrap_or_else(|| node_id.clone()),
+            local: chan.data.commitments.local_spec.to_local,
+            remote: chan.data.commitments.local_spec.to_remote,
+            relays_amount: relays.iter().map(|_| 1).sum(),
+            relays_volume: relays.iter().map(|r| r.amount_in).sum(),
+            relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
+            info_id: i,
+            channel_ext: ChannelExt::Hosted,
+        }
+    }
+
+    pub fn get_fiat_channel_stats(
+        &self,
+        i: usize,
+        channel_id: &str,
+        chan: &FiatChannel,
+    ) -> ChannelStats {
+        let now = chrono::offset::Utc::now().timestamp();
+        let interval = 24 * 3600;
+        let relays: Vec<&RelayedInfo> = self
+            .audit
+            .relayed
+            .iter()
+            .filter(|s| {
+                (s.from_channel_id == channel_id || s.to_channel_id == channel_id)
+                    && s.timestamp.unix > (now - interval) as u64
+            })
+            .collect();
+        let node_id = &chan.data.commitments.remote_node_id;
+        let remote_balance = chan
+            .data
+            .commitments
+            .last_cross_signed_state
+            .remote_balance_msat;
+        let rate = chan.data.commitments.last_cross_signed_state.rate;
+        ChannelStats {
+            chan_state: chan.state,
+            node_id: node_id.to_owned(),
+            chan_id: channel_id.to_owned(),
+            alias: self
+                .known_nodes
+                .get(&chan.data.commitments.remote_node_id)
+                .map(|n| n.alias.clone())
+                .unwrap_or_else(|| node_id.clone()),
+            local: chan
+                .data
+                .commitments
+                .last_cross_signed_state
+                .local_balance_msat,
+            remote: remote_balance,
+            relays_amount: relays.iter().map(|_| 1).sum(),
+            relays_volume: relays.iter().map(|r| r.amount_in).sum(),
+            relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
+            info_id: i,
+            channel_ext: ChannelExt::HostedFiat(FiatChannelData {
+                rate,
+                fiat_balance: remote_balance as f64 / rate as f64,
+            }),
         }
     }
 }
@@ -495,10 +706,17 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
     let channel_nodes: Vec<&str> = chan_info.iter().map(|c| &c.node_id[..]).unique().collect();
     let nodes_info = client.get_nodes(&channel_nodes).await?;
 
+    trace!("Getting info about hosted channels");
+    let hosted_chans: HcInfo = client.get_hosted_channels().await?;
+    trace!("Getting info about fiat channels");
+    let fiat_chans: FcInfo = client.get_fiat_channels().await?;
+
     {
         trace!("Start calculation");
         let mut app = mapp.lock().unwrap();
         app.channels = chan_info;
+        app.hc_channels = hosted_chans.channels;
+        app.fc_channels = fiat_chans.channels;
         trace!("Calculating channels activity");
         app.active_chans = app.get_active_chans();
         app.pending_chans = app.get_pending_chans();
@@ -539,6 +757,9 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
             .collect();
         trace!("Calculation of channels stats");
         app.channels_stats = app.get_channels_stats();
+        app.hosted_stats = app.get_hosted_stats();
+        app.fiat_stats = app.get_fiat_stats();
+        debug!("Fiat channels count {}", app.fiat_stats.len());
     }
     trace!("Updating is done");
     Ok(())

@@ -1,10 +1,11 @@
 pub mod audit;
 pub mod channel;
 pub mod common;
+pub mod hosted;
 pub mod node;
 
 use log::*;
-use self::{node::{NodeInfo, NetworkNode}, channel::ChannelInfo, audit::AuditInfo};
+use self::{node::{NodeInfo, NetworkNode}, channel::ChannelInfo, audit::AuditInfo, hosted::{FcInfo, HcInfo}};
 use std::collections::HashMap;
 use thiserror::Error;
 use std::time::Duration;
@@ -118,7 +119,45 @@ impl Client {
                 std::fs::write("nodes_response.json", &txt).expect("Unable to write file");
             }
         }
-       
+
+        Ok(serde_json::from_str(&txt)?)
+    }
+
+    pub async fn get_fiat_channels(&self) -> Result<FcInfo> {
+        let builder = || {
+            self.client
+                .post(format!("{}/{}", self.url, "fc-all"))
+                .basic_auth("", Some(self.password.clone()))
+        };
+        trace!("Requsting fc-all");
+        let txt = builder().send().await?.error_for_status()?.text().await?;
+        trace!("Response from fc-all: {}", txt);
+        #[cfg(feature = "trace-to-file")]
+        {
+            if log_enabled!(log::Level::Trace) {
+                trace!("Response written to fc_all_response.json");
+                std::fs::write("fc_all_response.json", &txt).expect("Unable to write file");
+            }
+        }
+        Ok(serde_json::from_str(&txt)?)
+    }
+
+    pub async fn get_hosted_channels(&self) -> Result<HcInfo> {
+        let builder = || {
+            self.client
+                .post(format!("{}/{}", self.url, "hc-all"))
+                .basic_auth("", Some(self.password.clone()))
+        };
+        trace!("Requsting hc-all");
+        let txt = builder().send().await?.error_for_status()?.text().await?;
+        trace!("Response from hc-all: {}", txt);
+        #[cfg(feature = "trace-to-file")]
+        {
+            if log_enabled!(log::Level::Trace) {
+                trace!("Response written to hc_all_response.json");
+                std::fs::write("hc_all_response.json", &txt).expect("Unable to write file");
+            }
+        }
         Ok(serde_json::from_str(&txt)?)
     }
 }

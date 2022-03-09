@@ -1,11 +1,15 @@
 pub mod channels;
 pub mod dashboard;
+pub mod hosted;
+pub mod fiat;
 
-pub use dashboard::draw_dashboard;
 pub use channels::draw_channels;
+pub use dashboard::draw_dashboard;
+pub use hosted::draw_hosted;
+pub use fiat::draw_fiat;
 
 use crossterm::{
-    event::{self, DisableMouseCapture, Event, KeyCode, KeyEvent},
+    event::{self, Event, KeyCode, KeyEvent},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -132,6 +136,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, mapp: AppMutex) {
         2 => draw_peers(f, &app, chunks[1]),
         3 => draw_onchain(f, &app, chunks[1]),
         4 => draw_routing(f, &app, chunks[1]),
+        5 => draw_hosted(f, &app, chunks[1]),
+        6 => draw_fiat(f, &app, chunks[1]),
         _ => unreachable!(),
     };
 
