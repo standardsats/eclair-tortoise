@@ -29,6 +29,7 @@ pub enum ChannelState {
     Closed,
     Offline,
     Syncing,
+    WaitForFundingSigned,
     WaitForFundingConfirmed,
     WaitForAcceptChannel,
     Negotiating,
