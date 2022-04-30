@@ -2,7 +2,7 @@ use crossterm::event::KeyCode;
 use itertools::Itertools;
 use log::*;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -12,7 +12,7 @@ use super::client::{
     channel::{ChannelInfo, ChannelState},
     hosted::{FcInfo, FiatChannel, HcInfo, HostedChannel},
     node::{NetworkNode, NodeInfo},
-    Client,
+    Client, NodePlugin,
 };
 
 pub type AppMutex = Arc<Mutex<App>>;
@@ -25,6 +25,8 @@ pub struct App {
     pub tab_index: usize,
 
     pub errors: Vec<String>,
+
+    pub supported: HashSet<NodePlugin>,
 
     pub node_info: NodeInfo,
     pub active_chans: usize,
@@ -154,6 +156,7 @@ impl ChannelStats {
 impl App {
     pub async fn new(client: Client, db: sled::Db) -> Result<App, Box<dyn Error>> {
         let node_info = client.get_info().await?;
+        let supported = client.get_supported_plugins().await?;
 
         Ok(App {
             client,
@@ -169,6 +172,7 @@ impl App {
             ],
             tab_index: 0,
             errors: vec![],
+            supported,
             node_info,
             active_chans: 0,
             pending_chans: 0,
@@ -706,14 +710,28 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
     let channel_nodes: Vec<&str> = chan_info.iter().map(|c| &c.node_id[..]).unique().collect();
     let nodes_info = client.get_nodes(&channel_nodes).await?;
 
+    let supported = mapp.lock().unwrap().supported.clone();
     trace!("Getting info about hosted channels");
-    let hosted_chans: HcInfo = client.get_hosted_channels().await?;
+    let hosted_chans: HcInfo = if supported.contains(&NodePlugin::HostedChannels) {
+        client.get_hosted_channels().await?
+    } else {
+        HcInfo {
+            channels: HashMap::new(),
+        }
+    };
     trace!("Getting info about fiat channels");
-    let fiat_chans: FcInfo = client.get_fiat_channels().await?;
+    let fiat_chans: FcInfo = if supported.contains(&NodePlugin::FiatChannels) {
+        client.get_fiat_channels().await?
+    } else {
+        FcInfo {
+            channels: HashMap::new(),
+        }
+    };
 
     {
         trace!("Start calculation");
         let mut app = mapp.lock().unwrap();
+
         app.channels = chan_info;
         app.hc_channels = hosted_chans.channels;
         app.fc_channels = fiat_chans.channels;
