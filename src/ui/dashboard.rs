@@ -206,7 +206,12 @@ fn draw_active_chans<B: Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let chans_to_draw = chans_in_column * vchunks.len();
     let chans_to_skip = app.channels_page as usize * chans_to_draw;
     let mut chans = app.channels_stats.clone();
-    chans.sort_by(|a, b| b.relays_volume.partial_cmp(&a.relays_volume).unwrap());
+    chans.sort_by(|a, b| 
+        if a.relays_volume == b.relays_volume {
+            a.chan_id.partial_cmp(&b.chan_id).unwrap()
+        } else {
+            b.relays_volume.partial_cmp(&a.relays_volume).unwrap()
+        });
     for (i, c) in chans
         .iter()
         .skip(chans_to_skip)
@@ -282,13 +287,22 @@ fn draw_active_chan<B: Backend>(f: &mut Frame<B>, area: Rect, chan: &ChannelStat
     let stats_col0 = Paragraph::new(col0_spans).alignment(Alignment::Left);
     f.render_widget(stats_col0, hchunks[0]);
 
-    let col1_spans = vec![Spans::from(vec![
-        Span::from("Volume: ".to_owned()),
-        Span::styled(
-            (chan.relays_volume / 1000).to_formatted_string(&Locale::en),
-            Style::default().fg(Color::Gray),
-        ),
-    ])];
+    let col1_spans = vec![
+        Spans::from(vec![
+            Span::from("Volume: ".to_owned()),
+            Span::styled(
+                (chan.relays_volume / 1000).to_formatted_string(&Locale::en),
+                Style::default().fg(Color::Gray),
+            ),
+        ]),
+        Spans::from(vec![
+            if chan.public {
+                Span::from("Public".to_owned())
+            } else {
+                Span::from("Private".to_owned())
+            }
+        ]),
+    ];
     let stats_col1 = Paragraph::new(col1_spans).alignment(Alignment::Left);
     f.render_widget(stats_col1, hchunks[1]);
 }
