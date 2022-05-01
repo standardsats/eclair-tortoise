@@ -4,9 +4,14 @@ pub mod common;
 pub mod hosted;
 pub mod node;
 
+use self::{
+    audit::AuditInfo,
+    channel::ChannelInfo,
+    hosted::{FcInfo, HcInfo},
+    node::{NetworkNode, NodeInfo},
+};
 use log::*;
-use self::{node::{NodeInfo, NetworkNode}, channel::ChannelInfo, audit::AuditInfo, hosted::{FcInfo, HcInfo}};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use std::time::Duration;
 
@@ -20,6 +25,30 @@ pub enum Error {
 
 /// Alias for a `Result` with the error type `self::Error`.
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Additional plugins of Eclair node that we know about
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NodePlugin {
+    /// https://github.com/engenegr/plugin-hosted-channels
+    HostedChannels,
+    /// https://github.com/standardsats/plugin-fiat-channels
+    FiatChannels,
+}
+
+impl std::fmt::Display for NodePlugin {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            NodePlugin::HostedChannels => write!(f, "hosted channels"),
+            NodePlugin::FiatChannels => write!(f, "fiat channels"),
+        }
+    }
+}
+
+impl NodePlugin {
+    pub fn known() -> Vec<NodePlugin> {
+        vec![NodePlugin::HostedChannels, NodePlugin::FiatChannels]
+    }
+}
 
 /// Hold required information to query LN node
 #[derive(Clone)]
@@ -121,6 +150,43 @@ impl Client {
         }
 
         Ok(serde_json::from_str(&txt)?)
+    }
+
+    /// Probe a specific endpoint for plugin to test it availability on remote node
+    pub async fn support_plugin(&self, plugin: NodePlugin) -> Result<bool> {
+        let method = match plugin {
+            NodePlugin::HostedChannels => format!("{}/{}", self.url, "hc-all"),
+            NodePlugin::FiatChannels => format!("{}/{}", self.url, "fc-all"),
+        };
+        trace!("Checking if {plugin} is enabled at node");
+        let res = self
+            .client
+            .post(method)
+            .basic_auth("", Some(self.password.clone()))
+            .send()
+            .await?;
+        match res.error_for_status() {
+            Ok(_) => Ok(true),
+            Err(err) => {
+                if err.status() == Some(reqwest::StatusCode::from_u16(404).unwrap()) {
+                    Ok(false)
+                } else {
+                    Err(err)?
+                }
+            }
+        }
+    }
+
+    /// Probe all known plugins and collect supported ones to set
+    pub async fn get_supported_plugins(&self) -> Result<HashSet<NodePlugin>> {
+        let mut res = HashSet::new();
+        for plugin in NodePlugin::known() {
+            let supported = self.support_plugin(plugin).await?;
+            if supported {
+                res.insert(plugin);
+            }
+        }
+        Ok(res)
     }
 
     pub async fn get_fiat_channels(&self) -> Result<FcInfo> {

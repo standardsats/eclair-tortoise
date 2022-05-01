@@ -29,7 +29,9 @@ pub enum ChannelState {
     Closed,
     Offline,
     Syncing,
+    WaitForFundingSigned,
     WaitForFundingConfirmed,
+    WaitForFundingLocked,
     WaitForAcceptChannel,
     Negotiating,
 }
@@ -44,6 +46,9 @@ impl ChannelState {
         || self == ChannelState::Opening
         || self == ChannelState::Syncing
         || self == ChannelState::WaitForFundingConfirmed
+        || self == ChannelState::WaitForFundingLocked
+        || self == ChannelState::WaitForFundingSigned
+        || self == ChannelState::WaitForAcceptChannel
     }
 
     pub fn is_sleeping(self) -> bool {

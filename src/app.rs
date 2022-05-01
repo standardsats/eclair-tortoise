@@ -2,7 +2,7 @@ use crossterm::event::KeyCode;
 use itertools::Itertools;
 use log::*;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -12,7 +12,7 @@ use super::client::{
     channel::{ChannelInfo, ChannelState},
     hosted::{FcInfo, FiatChannel, HcInfo, HostedChannel},
     node::{NetworkNode, NodeInfo},
-    Client,
+    Client, NodePlugin,
 };
 
 pub type AppMutex = Arc<Mutex<App>>;
@@ -25,6 +25,9 @@ pub struct App {
     pub tab_index: usize,
 
     pub errors: Vec<String>,
+
+    pub supported: HashSet<NodePlugin>,
+    pub stats_interval: i64,
 
     pub node_info: NodeInfo,
     pub active_chans: usize,
@@ -117,6 +120,7 @@ pub struct ChannelStats {
     pub relays_volume: u64,
     pub relays_fees: u64,
     pub info_id: usize,
+    pub public: bool,
     pub channel_ext: ChannelExt,
 }
 
@@ -154,6 +158,7 @@ impl ChannelStats {
 impl App {
     pub async fn new(client: Client, db: sled::Db) -> Result<App, Box<dyn Error>> {
         let node_info = client.get_info().await?;
+        let supported = client.get_supported_plugins().await?;
 
         Ok(App {
             client,
@@ -169,6 +174,8 @@ impl App {
             ],
             tab_index: 0,
             errors: vec![],
+            supported,
+            stats_interval: 30 * 24 * 3600,
             node_info,
             active_chans: 0,
             pending_chans: 0,
@@ -540,11 +547,11 @@ impl App {
         }
     }
 
-    pub fn get_channels_stats(&self) -> Vec<ChannelStats> {
+    pub fn get_channels_stats(&self, interval: i64) -> Vec<ChannelStats> {
         self.channels
             .iter()
             .enumerate()
-            .map(|(i, c)| self.get_channel_stats(i, c))
+            .map(|(i, c)| self.get_channel_stats(i, interval, c))
             .collect()
     }
 
@@ -564,9 +571,8 @@ impl App {
             .collect()
     }
 
-    pub fn get_channel_stats(&self, i: usize, chan: &ChannelInfo) -> ChannelStats {
+    pub fn get_channel_stats(&self, i: usize, interval: i64, chan: &ChannelInfo) -> ChannelStats {
         let now = chrono::offset::Utc::now().timestamp();
-        let interval = 24 * 3600;
         let relays: Vec<&RelayedInfo> = self
             .audit
             .relayed
@@ -598,6 +604,12 @@ impl App {
             relays_volume: relays.iter().map(|r| r.amount_in).sum(),
             relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
             info_id: i,
+            public: chan.data.as_ref().map_or(false, |c| {
+                c.commitments
+                    .channel_flags
+                    .announce_channel
+                    .unwrap_or(false)
+            }),
             channel_ext: if chan.data.is_none() {
                 ChannelExt::Hosted
             } else {
@@ -638,6 +650,7 @@ impl App {
             relays_amount: relays.iter().map(|_| 1).sum(),
             relays_volume: relays.iter().map(|r| r.amount_in).sum(),
             relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
+            public: false,
             info_id: i,
             channel_ext: ChannelExt::Hosted,
         }
@@ -686,6 +699,7 @@ impl App {
             relays_volume: relays.iter().map(|r| r.amount_in).sum(),
             relays_fees: relays.iter().map(|r| r.amount_in - r.amount_out).sum(),
             info_id: i,
+            public: false,
             channel_ext: ChannelExt::HostedFiat(FiatChannelData {
                 rate,
                 fiat_balance: remote_balance as f64 / rate as f64,
@@ -706,14 +720,28 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
     let channel_nodes: Vec<&str> = chan_info.iter().map(|c| &c.node_id[..]).unique().collect();
     let nodes_info = client.get_nodes(&channel_nodes).await?;
 
+    let supported = mapp.lock().unwrap().supported.clone();
     trace!("Getting info about hosted channels");
-    let hosted_chans: HcInfo = client.get_hosted_channels().await?;
+    let hosted_chans: HcInfo = if supported.contains(&NodePlugin::HostedChannels) {
+        client.get_hosted_channels().await?
+    } else {
+        HcInfo {
+            channels: HashMap::new(),
+        }
+    };
     trace!("Getting info about fiat channels");
-    let fiat_chans: FcInfo = client.get_fiat_channels().await?;
+    let fiat_chans: FcInfo = if supported.contains(&NodePlugin::FiatChannels) {
+        client.get_fiat_channels().await?
+    } else {
+        FcInfo {
+            channels: HashMap::new(),
+        }
+    };
 
     {
         trace!("Start calculation");
         let mut app = mapp.lock().unwrap();
+
         app.channels = chan_info;
         app.hc_channels = hosted_chans.channels;
         app.fc_channels = fiat_chans.channels;
@@ -756,7 +784,7 @@ pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error>
             .map(|n| (n.node_id.clone(), n.clone()))
             .collect();
         trace!("Calculation of channels stats");
-        app.channels_stats = app.get_channels_stats();
+        app.channels_stats = app.get_channels_stats(app.stats_interval);
         app.hosted_stats = app.get_hosted_stats();
         app.fiat_stats = app.get_fiat_stats();
         debug!("Fiat channels count {}", app.fiat_stats.len());
