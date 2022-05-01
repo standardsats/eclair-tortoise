@@ -1,5 +1,11 @@
 ## Building
 
+### Dependencies
+
+Compiling from sources requires OpenSSL libraries. On Linux distros try to install `openssl-devel` in package managers.
+
+### Compilation
+
 `rust` and `cargo` need to be installed.
 
 Use 
