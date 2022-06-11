@@ -105,7 +105,7 @@ pub struct UpdateAddHtlc {
     pub id: u64,
     pub amount_msat: u64,
     pub payment_hash: String,
-    pub expiry: u32, // block height
+    pub expiry: Option<u32>, // block height
     pub onion_routing_packet: PaymentOnionPacket,
     pub tlv_stream: TlvStream,
 }

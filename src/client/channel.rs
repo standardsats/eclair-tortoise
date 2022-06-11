@@ -133,7 +133,7 @@ pub struct ChannelLocalParams {
     pub htlc_minimum: u32,
     pub to_self_delay: u32,
     pub max_accepted_htlcs: u32,
-    pub is_funder: bool,
+    pub is_funder: Option<bool>,
     pub default_final_script_pub_key: String,
     pub init_features: NodeFeatures,
 }
