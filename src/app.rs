@@ -175,7 +175,7 @@ impl App {
             tab_index: 0,
             errors: vec![],
             supported,
-            stats_interval: 30 * 24 * 3600,
+            stats_interval: 24 * 3600,
             node_info,
             active_chans: 0,
             pending_chans: 0,
