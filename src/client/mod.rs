@@ -14,6 +14,7 @@ use log::*;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use std::time::Duration;
+use serde::de::Unexpected::Option;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -108,13 +109,25 @@ impl Client {
     }
 
     pub async fn get_audit(&self) -> Result<AuditInfo> {
+        const MONTH_PERIOD: i64 = 30 * 24 * 3600;
+        let now = chrono::offset::Utc::now().timestamp();
+        let mut params = HashMap::new();
+
+        // some day it may become aggregated yearly statistics
+        let to = now - 0 * MONTH_PERIOD;
+        let from = to - (0 + 1) * MONTH_PERIOD;
+        params.insert("from", from);
+        params.insert("to", to);
+
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "audit"))
                 .basic_auth("", Some(self.password.clone()))
+                .form(&params)
                 .timeout(Duration::from_secs(10))
         };
-        trace!("Requsting audit");
+
+        trace!("Requsting audit from {}, to {}", from, to);
         let txt = builder().send().await?.error_for_status()?.text().await?;
         trace!("Response from audit: {}", txt);
         #[cfg(feature = "trace-to-file")]
@@ -124,7 +137,7 @@ impl Client {
                 std::fs::write("audit_response.json", &txt).expect("Unable to write file");
             }
         }
-        Ok(serde_json::from_str(&txt)?)
+        return Ok(serde_json::from_str(&txt)?);
     }
 
     /// Get information about given nodes
