@@ -29,7 +29,7 @@ default = ["trace-to-file"]
 trace-to-file = []
 
 [lib]
-name = "eclair-api"
+name = "eclair_api"
 path = "src/lib.rs"
 
 [[bin]]
