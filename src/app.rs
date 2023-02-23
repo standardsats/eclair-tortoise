@@ -7,7 +7,7 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use super::client::{
+use super::api::{
     audit::{AuditInfo, RelayedInfo},
     channel::{ChannelInfo, ChannelState},
     hosted::{FcInfo, FiatChannel, HcInfo, HostedChannel},
@@ -708,7 +708,7 @@ impl App {
     }
 }
 
-pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::client::Error> {
+pub async fn query_node_info(mapp: AppMutex) -> Result<(), super::api::Error> {
     trace!("Quering next node stats");
     let client = mapp.lock().unwrap().client.clone();
     trace!("Getting channels");

@@ -1,5 +1,5 @@
 mod app;
-mod client;
+mod api;
 mod opts;
 mod ui;
 
@@ -11,7 +11,7 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use self::app::App;
-use self::client::Client;
+use self::api::Client;
 use self::opts::Opts;
 use self::ui::run_ui;
 

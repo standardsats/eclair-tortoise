@@ -27,3 +27,12 @@ tui = { version = "0.16.0", features = ["crossterm"] }
 [features]
 default = ["trace-to-file"]
 trace-to-file = []
+
+[lib]
+name = "eclair_api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "eclair-tortoise"
+path = "src/bin.rs"
+required-features = ["build-binary"]

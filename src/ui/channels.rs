@@ -10,7 +10,7 @@ use tui::{
 use std::iter;
 
 use crate::app::{App, ChannelStats};
-use crate::client::{
+use crate::api::{
     channel::{ChannelInfo, ChannelState},
 };
 
