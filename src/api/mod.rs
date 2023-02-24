@@ -14,7 +14,7 @@ use log::*;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use std::time::Duration;
-use serde::de::Unexpected::Option;
+
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -74,7 +74,7 @@ impl Client {
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "getinfo"))
-                .basic_auth("", Some(self.password.clone()))
+                .basic_auth(self.user.clone(), Some(self.password.clone()))
                 .timeout(Duration::from_secs(10))
         };
         trace!("Requsting getinfo");
@@ -94,7 +94,7 @@ impl Client {
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "channels"))
-                .basic_auth("", Some(self.password.clone()))
+                .basic_auth(self.user.clone(), Some(self.password.clone()))
                 .timeout(Duration::from_secs(10))
         };
         trace!("Requsting channels");
@@ -124,7 +124,7 @@ impl Client {
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "audit"))
-                .basic_auth("", Some(self.password.clone()))
+                .basic_auth(self.user.clone(), Some(self.password.clone()))
                 .form(&params)
                 .timeout(Duration::from_secs(10))
         };
@@ -150,7 +150,7 @@ impl Client {
             self.client
                 .post(format!("{}/{}", self.url, "nodes"))
                 .form(&params)
-                .basic_auth("", Some(self.password.clone()))
+                .basic_auth(self.user.clone(), Some(self.password.clone()))
                 .timeout(Duration::from_secs(10))
         };
         trace!("Requsting nodes");
@@ -177,7 +177,7 @@ impl Client {
         let res = self
             .client
             .post(method)
-            .basic_auth("", Some(self.password.clone()))
+            .basic_auth(self.user.clone(), Some(self.password.clone()))
             .send()
             .await?;
         match res.error_for_status() {
@@ -208,7 +208,7 @@ impl Client {
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "fc-all"))
-                .basic_auth("", Some(self.password.clone()))
+                .basic_auth(self.user.clone(), Some(self.password.clone()))
         };
         trace!("Requsting fc-all");
         let txt = builder().send().await?.error_for_status()?.text().await?;
@@ -227,7 +227,7 @@ impl Client {
         let builder = || {
             self.client
                 .post(format!("{}/{}", self.url, "hc-all"))
-                .basic_auth("", Some(self.password.clone()))
+                .basic_auth(self.user.clone(), Some(self.password.clone()))
         };
         trace!("Requsting hc-all");
         let txt = builder().send().await?.error_for_status()?.text().await?;
