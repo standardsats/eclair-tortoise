@@ -27,7 +27,7 @@ use log4rs::{
 async fn main() -> Result<(), Box<dyn Error>> {
     let opts: Opts = Opts::parse();
     let db: sled::Db = sled::open(&opts.state)?;
-    let client: Client = Client::new(&opts.url, &opts.password);
+    let client: Client = Client::new(&opts.url, "eclair", &opts.password);
 
     // Logging to log file.
     let logfile = FileAppender::builder()

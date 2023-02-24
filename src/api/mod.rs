@@ -55,14 +55,16 @@ impl NodePlugin {
 #[derive(Clone)]
 pub struct Client {
     url: String,
+    user: String,
     password: String,
     client: reqwest::Client,
 }
 
 impl Client {
-    pub fn new(url: &str, password: &str) -> Self {
+    pub fn new(url: &str, user: &str, password: &str) -> Self {
         Client {
             url: url.to_owned(),
+            user: user.to_owned(),
             password: password.to_owned(),
             client: reqwest::Client::new(),
         }
